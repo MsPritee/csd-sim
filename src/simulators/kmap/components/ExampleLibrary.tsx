@@ -1,4 +1,5 @@
 import { EXAMPLES, type KMapExample } from '../examples'
+import SectionCard from './SectionCard'
 
 interface ExampleLibraryProps {
   onLoadExample: (example: KMapExample) => void
@@ -6,12 +7,10 @@ interface ExampleLibraryProps {
 
 export default function ExampleLibrary({ onLoadExample }: ExampleLibraryProps) {
   return (
-    <div className="bg-slate-900 rounded-lg p-6 border border-slate-700">
-      <h2 className="text-xl font-semibold mb-4 text-violet-300">Example Library</h2>
-      <p className="text-sm text-slate-400 mb-4">
-        Click an example to load it into the K-map and explore the concepts.
-      </p>
-      
+    <SectionCard
+      title="Example Library"
+      subtitle="Click an example to load it into the K-map and explore the concepts."
+    >
       <div className="space-y-2">
         {EXAMPLES.map((example) => (
           <button
@@ -24,6 +23,6 @@ export default function ExampleLibrary({ onLoadExample }: ExampleLibraryProps) {
           </button>
         ))}
       </div>
-    </div>
+    </SectionCard>
   )
 }

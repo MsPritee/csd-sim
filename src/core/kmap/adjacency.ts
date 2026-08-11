@@ -79,3 +79,26 @@ export function differInOneVariable(kmap: KMapModel, a: number, b: number): bool
   const variables = kmap.layout.variables.length
   return hammingDistance(a, b) === 1 && a < 2 ** variables && b < 2 ** variables
 }
+
+/**
+ * Which variables differ (and which stay the same) between two input
+ * combinations. This is the educational basis for adjacency: adjacent cells
+ * differ in exactly one variable.
+ */
+export function variableDifference(
+  kmap: KMapModel,
+  a: number,
+  b: number,
+): { changing: string[]; constant: string[] } {
+  const variables = kmap.layout.variables
+  const n = variables.length
+  const changing: string[] = []
+  const constant: string[] = []
+  for (let i = 0; i < n; i++) {
+    const shift = n - 1 - i
+    const abit = (a >> shift) & 1
+    const bbit = (b >> shift) & 1
+    ;(abit === bbit ? constant : changing).push(variables[i]!)
+  }
+  return { changing, constant }
+}

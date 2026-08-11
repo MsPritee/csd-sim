@@ -1,34 +1,67 @@
-import { useState } from 'react'
-import { createKMap, withValue, simplify, minterms, maxterms, dontCares, type KMapModel, type CellValue } from '../../core/kmap'
-import { validateGroup } from '../../core/kmap/grouping'
+import { useMemo, useState } from 'react'
+import type { KMapModel, CellValue } from '../../core/kmap'
+import { minterms, maxterms, adjacentMinterms } from '../../core/kmap'
 import { mintermToString } from '../../core/boolean'
+import {
+  performSimplification,
+  loadExample,
+  validateCellGroup,
+  generateWalkthrough,
+  type KMapSolution,
+} from '../../application/kmap'
+import { explainGroup } from '../../education/adjacency'
+import { useKMapStore } from '../../stores/kmapStore'
 import KMapGrid from './components/KMapGrid'
 import ExpandableSection from './components/ExpandableSection'
+import SectionCard from './components/SectionCard'
 import ExampleLibrary from './components/ExampleLibrary'
+import VerifyPanel from './components/VerifyPanel'
+import TruthTablePanel from './components/TruthTablePanel'
+import SolutionWalkthrough from './components/SolutionWalkthrough'
+import GroupingSolution from './components/GroupingSolution'
+import SOPPOSConcept from './components/SOPPOSConcept/SOPPOSConcept'
+import AdvancedPanel from './advanced/AdvancedPanel'
 import { type KMapExample } from './examples'
 
-export default function KMapSimulator() {
-  const [variableCount, setVariableCount] = useState<2 | 3 | 4>(3)
-  const [kmap, setKmap] = useState<KMapModel>(() => createKMap(['A', 'B', 'C']))
-  const [selectedCells, setSelectedCells] = useState<Set<number>>(new Set())
-  const [currentValue, setCurrentValue] = useState<CellValue>(1)
-  const [showSOP, setShowSOP] = useState(true)
-  const [showExplanation, setShowExplanation] = useState(false)
-  const [hoveredCell, setHoveredCell] = useState<number | null>(null)
-  const [showMintermNumbers, setShowMintermNumbers] = useState(false)
+interface KMapSimulatorProps {
+  onBackToHome?: () => void
+  onOpenPractice?: () => void
+}
 
-  const variables = ['A', 'B', 'C', 'D'].slice(0, variableCount)
+export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimulatorProps = {}) {
+  const {
+    variables,
+    model: kmap,
+    selectedCells,
+    currentValue,
+    showSOP,
+    showMintermNumbers,
+    hoveredCell,
+    setVariables,
+    setModel,
+    setCell,
+    setSelectedCells,
+    setCurrentValue,
+    setShowSOP,
+    setShowMintermNumbers,
+    setHoveredCell,
+  } = useKMapStore()
+
+  const [showLearningGuide, setShowLearningGuide] = useState(false)
+  const [showSopPos, setShowSopPos] = useState(true)
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false)
+  const [walkthroughHighlight, setWalkthroughHighlight] = useState<Map<number, number> | null>(null)
+  const [viewMode, setViewMode] = useState<'kmap' | 'truth' | 'both'>('both')
+  const [cellInfoPinned, setCellInfoPinned] = useState<number | null>(null)
+
+  const variableCount = variables.length as 2 | 3 | 4
 
   const handleVariableCountChange = (count: 2 | 3 | 4) => {
-    setVariableCount(count)
-    const newVars = ['A', 'B', 'C', 'D'].slice(0, count)
-    setKmap(createKMap(newVars))
-    setSelectedCells(new Set())
+    setVariables(['A', 'B', 'C', 'D'].slice(0, count))
   }
 
   const handleCellClick = (minterm: number) => {
-    const newValue = currentValue
-    setKmap(withValue(kmap, minterm, newValue))
+    setCell(minterm, currentValue)
   }
 
   const handleCellSelect = (minterm: number) => {
@@ -42,37 +75,74 @@ export default function KMapSimulator() {
   }
 
   const clearKMap = () => {
-    setKmap(createKMap(variables))
-    setSelectedCells(new Set())
+    useKMapStore.getState().clear()
   }
 
-  const loadExample = (example: KMapExample) => {
-    setVariableCount(example.variables.length as 2 | 3 | 4)
-    let newKmap = createKMap(example.variables)
-    example.values.forEach((value: CellValue, minterm: number) => {
-      if (value !== null) {
-        newKmap = withValue(newKmap, minterm, value)
-      }
-    })
-    setKmap(newKmap)
+  const handleLoadExample = (example: KMapExample) => {
+    setVariables(example.variables)
+    const next = loadExample(example)
+    setModel(next)
     setSelectedCells(new Set())
+    setWalkthroughHighlight(null)
   }
 
   const ones = new Set(minterms(kmap))
   const zeros = new Set(maxterms(kmap))
-  const dontCareSet = new Set(dontCares(kmap))
 
-  const simplification = simplify(kmap, ones, zeros, dontCareSet)
+  const simplification = performSimplification(kmap)
 
-  const selectedGroup = Array.from(selectedCells).sort((a, b) => a - b)
-  const groupValidation = selectedGroup.length > 0 ? validateGroup(kmap, selectedGroup) : null
+  const walkthroughSolution = useMemo<KMapSolution | null>(
+    () => (walkthroughOpen ? generateWalkthrough(kmap, showSOP ? 'sop' : 'pos') : null),
+    [walkthroughOpen, kmap, showSOP],
+  )
+
+  const selectedGroup = useMemo(
+    () => Array.from(selectedCells).sort((a, b) => a - b),
+    [selectedCells],
+  )
+  const groupValidation = selectedGroup.length > 0 ? validateCellGroup(kmap, selectedGroup) : null
+
+  const groupedSummary = useMemo(
+    () => explainGroup(kmap, selectedGroup, showSOP ? 'sop' : 'pos'),
+    [kmap, selectedGroup, showSOP],
+  )
+
+  const sopTerms = simplification.sopGroups.map((g) => g.productText)
+  const posTerms = simplification.posGroups.map((g) => g.sumText)
+  const simplifiedExpression = showSOP ? simplification.sop : simplification.pos
+  const originalExpression =
+    showSOP
+      ? `Σm(${Array.from(ones).sort((a, b) => a - b).join(', ')})`
+      : `ΠM(${Array.from(zeros).sort((a, b) => a - b).join(', ')})`
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-8">
       <div className="max-w-6xl mx-auto">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold text-violet-400">Karnaugh Map Simulator</h1>
-          <p className="text-slate-400 mt-2">Interactive learning tool for Boolean function simplification</p>
+          <div className="flex items-center justify-between gap-4">
+            <button
+              onClick={onBackToHome}
+              title="Back to Home"
+              aria-label="Back to Home"
+              className="text-slate-300 hover:text-violet-300 transition-colors px-3 py-2 text-lg"
+            >
+              <span aria-hidden>⌂</span>
+              <span className="hidden sm:inline ml-2 text-sm">Home</span>
+            </button>
+            <div className="text-center">
+              <h1 className="text-3xl font-bold text-violet-400">Karnaugh Map Simulator</h1>
+              <p className="text-slate-400 mt-2">Interactive learning tool for Boolean function simplification</p>
+            </div>
+            <button
+              onClick={onOpenPractice}
+              title="Practice & Mastery"
+              aria-label="Practice & Mastery"
+              className="text-slate-300 hover:text-violet-300 transition-colors px-3 py-2 text-lg"
+            >
+              <span aria-hidden>★</span>
+              <span className="hidden sm:inline ml-2 text-sm">Practice & Mastery</span>
+            </button>
+          </div>
         </header>
 
         {/* Controls */}
@@ -136,35 +206,70 @@ export default function KMapSimulator() {
         <div className="grid lg:grid-cols-2 gap-6">
           {/* K-Map Grid */}
           <div className="bg-slate-900 rounded-lg p-6 border border-slate-700">
-            <h2 className="text-xl font-semibold mb-4 text-violet-300">K-Map Grid</h2>
-            <p className="text-sm text-slate-400 mb-4">Click cells to set values. Ctrl+click to select groups for validation. Hover over cells for detailed information.</p>
-            
-            <KMapGrid
-              kmap={kmap}
-              onCellClick={handleCellClick}
-              onCellSelect={handleCellSelect}
-              selectedCells={selectedCells}
-              hoveredCell={hoveredCell}
-              onCellHover={setHoveredCell}
-              showMintermNumbers={showMintermNumbers}
-            />
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-semibold text-violet-300">K-Map Grid</h2>
+              <div className="inline-flex rounded bg-slate-800 p-0.5" role="group" aria-label="View mode">
+                {(['kmap', 'both', 'truth'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    aria-pressed={viewMode === mode}
+                    className={`px-2.5 py-1 rounded text-sm capitalize ${
+                      viewMode === mode ? 'bg-violet-600 text-white' : 'text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    {mode === 'truth' ? 'Truth-Table' : mode === 'kmap' ? 'K-Map' : 'Both'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-sm text-slate-400 mb-4">
+              Click cells to set values. Ctrl+click to select groups for validation. Right-click a cell
+              to pin its detailed information; hover any cell to preview it live.
+            </p>
 
-            {/* Cell Information Popup */}
-            {hoveredCell !== null && (
+            {viewMode !== 'truth' && (
+              <KMapGrid
+                kmap={kmap}
+                onCellClick={handleCellClick}
+                onCellSelect={handleCellSelect}
+                onCellInfo={(minterm) => setCellInfoPinned(minterm)}
+                selectedCells={selectedCells}
+                hoveredCell={hoveredCell}
+                onCellHover={setHoveredCell}
+                showMintermNumbers={showMintermNumbers}
+                showSOP={showSOP}
+                highlightMap={walkthroughHighlight ?? undefined}
+                showAdjacency
+              />
+            )}
+
+            {viewMode !== 'truth' && (cellInfoPinned !== null || hoveredCell !== null) && (
               <CellInfoPopup
                 kmap={kmap}
-                minterm={hoveredCell}
-                onClose={() => setHoveredCell(null)}
+                minterm={hoveredCell ?? cellInfoPinned!}
+                onClose={() => setCellInfoPinned(null)}
               />
+            )}
+
+            {viewMode !== 'kmap' && (
+              <div className="mt-6">
+                <TruthTablePanel
+                  kmap={kmap}
+                  showSOP={showSOP}
+                  highlightedCell={hoveredCell ?? cellInfoPinned}
+                  onSelectCell={(minterm) => setHoveredCell(minterm)}
+                />
+              </div>
             )}
           </div>
 
           {/* Results Panel */}
           <div className="space-y-6">
             {/* Simplified Expression */}
-            <div className="bg-slate-900 rounded-lg p-6 border border-slate-700">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-violet-300">Simplified Expression</h2>
+            <SectionCard
+              title="Simplified Expression"
+              headerRight={
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowSOP(true)}
@@ -183,10 +288,11 @@ export default function KMapSimulator() {
                     POS
                   </button>
                 </div>
-              </div>
+              }
+            >
 
               <div className="bg-slate-800 rounded p-4 font-mono text-lg">
-                {showSOP ? simplification.sop : simplification.pos}
+                {simplifiedExpression}
               </div>
 
               <div className="mt-4">
@@ -202,52 +308,68 @@ export default function KMapSimulator() {
                   ))}
                 </div>
               </div>
+            </SectionCard>
+
+            {/* Solution Walkthrough */}
+            <div className="bg-slate-900 rounded-lg border border-slate-700">
+              <div className="flex items-center justify-between p-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-violet-300">Solution Walkthrough</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Step-by-step {showSOP ? 'SOP' : 'POS'} derivation of the simplified expression.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setWalkthroughOpen(!walkthroughOpen)}
+                  aria-expanded={walkthroughOpen}
+                  aria-label="Toggle Solution Walkthrough"
+                  className="flex items-center justify-center h-8 w-8 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xl leading-none"
+                >
+                  {walkthroughOpen ? '−' : '+'}
+                </button>
+              </div>
+              {walkthroughOpen && walkthroughSolution && (
+                <div className="px-4 pb-4">
+                  <SolutionWalkthrough
+                    solution={walkthroughSolution}
+                    onHighlightChange={(m) => setWalkthroughHighlight(m)}
+                  />
+                  <GroupingSolution
+                    solution={walkthroughSolution}
+                    onHighlightChange={(m) => setWalkthroughHighlight(m)}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Group Validation */}
-            {groupValidation && (
-              <div className={`bg-slate-900 rounded-lg p-6 border ${
-                groupValidation.valid ? 'border-green-600' : 'border-red-600'
-              }`}>
-                <h2 className="text-xl font-semibold mb-4 text-violet-300">Group Validation</h2>
-                {groupValidation.valid ? (
-                  <div className="text-green-400">
-                    <p className="font-semibold">Valid Group</p>
-                    <p className="text-sm text-slate-400 mt-1">
-                      Selected cells form a valid K-map group.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="text-red-400">
-                    <p className="font-semibold">Invalid Group</p>
-                    <ul className="text-sm text-slate-400 mt-1 list-disc list-inside">
-                      {groupValidation.issues.map((issue, idx) => (
-                        <li key={idx}>{issue.message}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Verify */}
+            <VerifyPanel
+              kmap={kmap}
+              showSOP={showSOP}
+              sopTerms={sopTerms}
+              posTerms={posTerms}
+              simplifiedExpression={simplifiedExpression}
+              originalExpression={originalExpression}
+              selectedGroup={selectedGroup}
+            />
 
-            {/* Educational Content */}
-            <div className="bg-slate-900 rounded-lg p-6 border border-slate-700">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-violet-300">Learning Guide</h2>
+            {/* Learning Guide */}
+            <div className="bg-slate-900 rounded-lg border border-slate-700">
+              <div className="flex items-center justify-between gap-3 p-4">
+                <h2 className="text-lg font-semibold text-violet-300">Learning Guide</h2>
                 <button
-                  onClick={() => setShowExplanation(!showExplanation)}
-                  className="text-sm text-violet-400 hover:text-violet-300"
+                  onClick={() => setShowLearningGuide(!showLearningGuide)}
+                  aria-expanded={showLearningGuide}
+                  aria-label="Toggle Learning Guide"
+                  className="flex items-center justify-center h-8 w-8 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xl leading-none"
                 >
-                  {showExplanation ? 'Hide' : 'Show'}
+                  {showLearningGuide ? '−' : '+'}
                 </button>
               </div>
 
-              {showExplanation && (
-                <div className="space-y-4 text-sm text-slate-300">
-                  <ExpandableSection
-                    title="What are Minterms and Maxterms?"
-                    defaultExpanded={true}
-                  >
+              {showLearningGuide && (
+                <div className="space-y-4 text-sm text-slate-300 px-4 pb-4">
+                  <ExpandableSection title="What are Minterms and Maxterms?" defaultExpanded={true}>
                     <div className="space-y-2 text-slate-400">
                       <p>
                         <strong className="text-white">Minterms (m₀, m₁, m₂...)</strong> represent input combinations where the output is 1.
@@ -278,46 +400,6 @@ export default function KMapSimulator() {
                     </div>
                   </ExpandableSection>
 
-                  <ExpandableSection title="Why SOP uses AND-OR structure">
-                    <div className="space-y-2 text-slate-400">
-                      <p>
-                        <strong className="text-white">Sum of Products (SOP)</strong> combines minterms using OR (+).
-                      </p>
-                      <p>
-                        Each minterm is a product (AND) of literals. When ANY minterm is true, the output is true.
-                      </p>
-                      <p className="text-xs">
-                        In K-maps: Group 1s → each group becomes a product term → OR all terms together.
-                      </p>
-                    </div>
-                  </ExpandableSection>
-
-                  <ExpandableSection title="Why POS uses OR-AND structure">
-                    <div className="space-y-2 text-slate-400">
-                      <p>
-                        <strong className="text-white">Product of Sums (POS)</strong> combines maxterms using AND (·).
-                      </p>
-                      <p>
-                        Each maxterm is a sum (OR) of literals. When ALL maxterms are satisfied, the output is true.
-                      </p>
-                      <p className="text-xs">
-                        In K-maps: Group 0s → each group becomes a sum term → AND all terms together.
-                      </p>
-                    </div>
-                  </ExpandableSection>
-
-                  <ExpandableSection title="Variable Complementation Rules">
-                    <div className="space-y-2 text-slate-400">
-                      <p>
-                        Why does 0 become A' in SOP but A in POS?
-                      </p>
-                      <ul className="list-disc list-inside space-y-1">
-                        <li><strong className="text-violet-300">SOP:</strong> 0 means variable is FALSE, so we write A' (NOT A) to make the term true when A=0</li>
-                        <li><strong className="text-violet-300">POS:</strong> 0 means variable is FALSE, so we write A (we want the sum to be 0 when A=0)</li>
-                      </ul>
-                    </div>
-                  </ExpandableSection>
-
                   <ExpandableSection title="K-Map Fundamentals">
                     <div className="space-y-2 text-slate-400">
                       <p>
@@ -335,16 +417,76 @@ export default function KMapSimulator() {
                         <li>Groups can wrap around edges</li>
                         <li>Larger groups eliminate more variables</li>
                       </ul>
+                      <p className="text-xs text-slate-500">
+                        The K-map grid marks valid adjacent cells of the hovered cell with a dashed outline — try hovering different cells to explore adjacency.
+                      </p>
                     </div>
                   </ExpandableSection>
                 </div>
               )}
             </div>
 
+            {/* Why SOP Uses 1s and POS Uses 0s? */}
+            <div className="bg-slate-900 rounded-lg border border-slate-700">
+              <div className="flex items-center justify-between gap-3 p-4">
+                <h2 className="text-lg font-semibold text-violet-300">
+                  Why SOP Uses 1s and POS Uses 0s?
+                </h2>
+                <button
+                  onClick={() => setShowSopPos(!showSopPos)}
+                  className="flex items-center justify-center h-8 w-8 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xl leading-none"
+                  aria-expanded={showSopPos}
+                  aria-label="Toggle Why SOP Uses 1s and POS Uses 0s"
+                >
+                  {showSopPos ? '−' : '+'}
+                </button>
+              </div>
+
+              {showSopPos && (
+                <div className="px-4 pb-4">
+                  <SOPPOSConcept onLearnGrouping={() => setShowLearningGuide(true)} />
+                </div>
+              )}
+            </div>
+
             {/* Example Library */}
-            <ExampleLibrary onLoadExample={loadExample} />
+            <ExampleLibrary onLoadExample={handleLoadExample} />
+
+            {/* Group Validation */}
+            {groupValidation && (
+              <SectionCard
+                title="Group Validation"
+                defaultOpen
+              >
+                <div className="flex items-center justify-between">
+                  {groupValidation.valid ? (<div className="text-green-400">
+                    <p className="font-semibold">Valid Group</p>
+                    <p className="text-sm text-slate-400 mt-1">
+                      Selected cells form a valid K-map group.
+                    </p>
+                    <ul className="text-sm text-slate-400 mt-2 space-y-1 list-disc list-inside">
+                      {groupedSummary.reasons.map((r, idx) => (
+                        <li key={idx}>{r.text}</li>
+                      ))}
+                    </ul>
+                  </div>) : (
+                    <div className="text-red-400">
+                      <p className="font-semibold">Invalid Group</p>
+                      <ul className="text-sm text-slate-400 mt-1 list-disc list-inside">
+                        {groupValidation.issues.map((issue, idx) => (
+                          <li key={idx}>{issue.message}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </SectionCard>
+            )}
           </div>
         </div>
+
+        {/* Connect Representations: Define & Analyze — full width below both panels */}
+        <AdvancedPanel />
       </div>
     </div>
   )
@@ -352,7 +494,7 @@ export default function KMapSimulator() {
 
 function CellInfoPopup({ kmap, minterm, onClose }: { kmap: KMapModel; minterm: number; onClose: () => void }) {
   const variables = kmap.layout.variables
-  const cell = kmap.cells.flat().find(c => c.minterm === minterm)
+  const cell = kmap.cells.flat().find((c) => c.minterm === minterm)
   if (!cell) return null
 
   const binaryString = minterm.toString(2).padStart(variables.length, '0')
@@ -360,7 +502,6 @@ function CellInfoPopup({ kmap, minterm, onClose }: { kmap: KMapModel; minterm: n
   const isMinterm = cell.value === 1
   const isMaxterm = cell.value === 0
 
-  // Calculate variable states
   const variableStates = variables.map((variable, index) => {
     const bit = (minterm >> (variables.length - 1 - index)) & 1
     const isComplemented = bit === 0
@@ -368,9 +509,11 @@ function CellInfoPopup({ kmap, minterm, onClose }: { kmap: KMapModel; minterm: n
       variable,
       bit,
       isComplemented,
-      literal: isComplemented ? `${variable}'` : variable
+      literal: isComplemented ? `${variable}'` : variable,
     }
   })
+
+  const adjacent = adjacencyLines(kmap, minterm)
 
   return (
     <div className="mt-4 bg-slate-800 rounded-lg p-4 border border-violet-500/30">
@@ -383,7 +526,7 @@ function CellInfoPopup({ kmap, minterm, onClose }: { kmap: KMapModel; minterm: n
           ×
         </button>
       </div>
-      
+
       <div className="space-y-3 text-sm">
         <div className="grid grid-cols-2 gap-2">
           <div className="flex justify-between">
@@ -403,18 +546,17 @@ function CellInfoPopup({ kmap, minterm, onClose }: { kmap: KMapModel; minterm: n
             <span className="text-white font-mono">{productTerm}</span>
           </div>
         </div>
-        
-        {/* Variable State Visualization */}
+
         <div className="border-t border-slate-700 pt-3">
           <h4 className="text-violet-300 font-semibold mb-2">Variable States</h4>
           <div className="space-y-1">
-            {variableStates.map(({ variable, bit, isComplemented: _isComplemented, literal }) => (
+            {variableStates.map(({ variable, bit, literal }) => (
               <div key={variable} className="flex items-center justify-between">
                 <span className="text-slate-400">{variable}:</span>
                 <div className="flex items-center gap-2">
                   <span className={`font-mono px-2 py-0.5 rounded ${
-                    bit === 1 
-                      ? 'bg-green-900/50 text-green-400' 
+                    bit === 1
+                      ? 'bg-green-900/50 text-green-400'
                       : 'bg-red-900/50 text-red-400'
                   }`}>
                     {bit}
@@ -426,7 +568,7 @@ function CellInfoPopup({ kmap, minterm, onClose }: { kmap: KMapModel; minterm: n
             ))}
           </div>
         </div>
-        
+
         <div className="border-t border-slate-700 pt-3">
           <div className="flex justify-between">
             <span className="text-slate-400">Current Value:</span>
@@ -446,6 +588,17 @@ function CellInfoPopup({ kmap, minterm, onClose }: { kmap: KMapModel; minterm: n
           )}
         </div>
 
+        {adjacent.length > 0 && (
+          <div className="border-t border-slate-700 pt-3">
+            <h4 className="text-violet-300 font-semibold mb-2">Adjacent Cells</h4>
+            <ul className="space-y-1 text-xs text-slate-400">
+              {adjacent.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="border-t border-slate-700 pt-3">
           <h4 className="text-violet-300 font-semibold mb-2">Complementation Rules</h4>
           <div className="space-y-1 text-xs text-slate-400">
@@ -462,4 +615,13 @@ function CellInfoPopup({ kmap, minterm, onClose }: { kmap: KMapModel; minterm: n
       </div>
     </div>
   )
+}
+
+function adjacencyLines(kmap: KMapModel, minterm: number): string[] {
+  const neighbors = adjacentMinterms(kmap, minterm)
+  if (neighbors.length === 0) return []
+  return [
+    `Adjacent cells differ by exactly one variable: ${neighbors.map((m) => `m${m}`).join(', ')}.`,
+    'They can be merged into a larger group to eliminate that differing variable.',
+  ]
 }

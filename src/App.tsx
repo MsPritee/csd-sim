@@ -1,23 +1,40 @@
 import { useState } from 'react'
 import KMapSimulator from './simulators/kmap/KMapSimulator'
+import KMapPractice from './simulators/kmap/practice/KMapPractice'
 
-type View = 'home' | 'kmap'
+type View = 'home' | 'kmap' | 'practice'
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('home')
 
-  if (currentView === 'kmap') {
+  if (currentView === 'kmap' || currentView === 'practice') {
+    if (currentView === 'kmap') {
+      return (
+        <KMapSimulator
+          onBackToHome={() => setCurrentView('home')}
+          onOpenPractice={() => setCurrentView('practice')}
+        />
+      )
+    }
     return (
       <div>
-        <nav className="bg-slate-900 border-b border-slate-700 px-6 py-4">
+        <nav className="bg-slate-900 border-b border-slate-700 px-6 py-3 flex items-center gap-4">
           <button
             onClick={() => setCurrentView('home')}
             className="text-violet-400 hover:text-violet-300 font-medium"
           >
             ← Back to Home
           </button>
+          <button
+            onClick={() => setCurrentView('kmap')}
+            className="text-violet-400 hover:text-violet-300 font-medium text-sm"
+          >
+            ← K-map simulator
+          </button>
         </nav>
-        <KMapSimulator />
+        <div className="min-h-screen bg-slate-950 text-slate-100">
+          <KMapPractice />
+        </div>
       </div>
     )
   }

@@ -1,281 +1,197 @@
 # Changelog
 
-All notable changes to Digital Logic Concept Lab are recorded here.
+All notable changes to the Digital Logic Concept Lab project will be documented in this file.
 
-The format groups entries by milestone (M0–M15 per [PLAN.md](./PLAN.md)). Each entry lists the files changed and what changed, so every modification is traceable.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### M5 — K-map Learning Experience · Educational Enhancements (Phase 1-3)
+### [Updated]
+- **Component**: KMapSimulator Header Layout
+- **Description**: Rebuilt the simulator header as a single responsive row with Home (left), centered title/subtitle, and Practice & Mastery (right)
+- **Reasoning**: Consolidate navigation into one clean row and add direct practice access from the simulator
+- **Impact**: Home and Practice buttons use icons with labels hidden on small screens (hover tooltips), improving navigation and mobile layout
+- **Files Modified**:
+  - `src/simulators/kmap/KMapSimulator.tsx` - Added `onBackToHome`/`onOpenPractice` props and single-row header
 
-Completed on 2026-08-09.
+### [Updated]
+- **Component**: KMapSimulator Section Reordering
+- **Description**: Reordered the right-column result panel to: Simplified Expression → Solution Walkthrough → Verify → Learning Guide → Why SOP/POS → Example Library → remaining sections, and moved the Advanced analysis panel to full width below both columns
+- **Reasoning**: Users requested a logical learning flow and a full-width advanced panel
+- **Impact**: "Why SOP Uses 1s and POS Uses 0s?" is now its own standalone collapsible section instead of being nested inside the Learning Guide; Connect Representations panel now spans the full row
+- **Files Modified**:
+  - `src/simulators/kmap/KMapSimulator.tsx` - Reordered sections, extracted SOPPOSConcept, moved AdvancedPanel full-width
 
-**Educational enhancements to improve student understanding of SOP/POS, minterms, maxterms, and variable complementation.**
+### [Added]
+- **Component**: KMapSimulator View Mode Toggle
+- **Description**: Added a K-Map / Both / Truth-Table view toggle to the grid card, with a gap between the grid and the truth table
+- **Reasoning**: Let users focus on the grid, the truth table, or both simultaneously
+- **Impact**: Truth table now renders inside the grid card and reacts to the selected/hovered cell; default view shows both
+- **Files Modified**:
+  - `src/simulators/kmap/KMapSimulator.tsx` - Added `viewMode` state and toggle, wired TruthTablePanel inline
 
-- `src/simulators/kmap/components/KMapGrid.tsx` (new) — Extracted K-map grid as separate component
-  - Added hover state tracking with visual feedback
-  - Support for showing minterm numbers on cells
-  - Enhanced cell selection and interaction
-- Cell information popup (integrated in KMapSimulator) — Cell hover information
-  - Shows minterm/maxterm notation (m5, M5)
-  - Displays binary representation and product term
-  - Variable state visualization with color coding (green=1, red=0)
-  - Interactive complementation rules explanation
-- `src/simulators/kmap/components/ExpandableSection.tsx` (new) — Progressive content sections
-  - Expandable/collapsible educational content
-  - Supports progressive depth learning (basic → detailed)
-- `src/simulators/kmap/components/ExampleLibrary.tsx` (new) — Pre-built example library
-  - 9 educational examples (Majority, XOR, Parity, AND, OR, Half Adder, etc.)
-  - One-click loading to explore different concepts
-- `src/simulators/kmap/examples/examples.ts` (new) — Example data definitions
-  - Comprehensive example collection with explanations
-  - Covers common Boolean functions and K-map patterns
-- `src/simulators/kmap/KMapSimulator.tsx` — Enhanced with educational features
-  - Added "Show Numbers" toggle for minterm display
-  - Integrated cell information popup on hover
-  - Progressive learning guide with 6 expandable sections
-  - Example library integration
-  - Enhanced cell information with variable state visualization
-  - Complementation rules explanation integrated in popup
-- `src/simulators/kmap/examples/index.ts` (new) — Barrel export for examples
+### [Updated]
+- **Component**: KMapSimulator Solution Walkthrough
+- **Description**: Converted the Solution Walkthrough into its own collapsible section and made solution generation lazy
+- **Reasoning**: Avoid recomputing the walkthrough when the panel is closed; keep the UI tidy
+- **Impact**: Walkthrough and Grouping Solution render only when expanded; computation is skipped when collapsed
+- **Files Modified**:
+  - `src/simulators/kmap/KMapSimulator.tsx` - Added `walkthroughOpen`, lazy `walkthroughSolution`
 
-**Educational Content Added:**
-- "What are Minterms and Maxterms?" - Basic definitions with interactive examples
-- "Understanding Binary to Product Terms" - How bits become literals
-- "Why SOP uses AND-OR structure" - SOP fundamentals
-- "Why POS uses OR-AND structure" - POS fundamentals  
-- "Variable Complementation Rules" - Why 0 becomes A' in SOP but A in POS
-- "K-Map Fundamentals" - Gray code, grouping rules, adjacency
+### [Updated]
+- **Component**: KMapSimulator Cell Information Interaction
+- **Description**: Cell info now updates live on hover while remaining pinned on right-click
+- **Reasoning**: Users expected hovering another cell to immediately reflect its information in the expanded section until manually closed
+- **Impact**: Right-click pins the info panel; hovering a different cell swaps its content live; the panel stays open until the user closes it
+- **Files Modified**:
+  - `src/simulators/kmap/KMapSimulator.tsx` - Hover takes priority (`hoveredCell ?? cellInfoPinned`) for both the info popup and truth-table highlight
 
-**Verification:** `npm test` ✓ (individual tests passing) · `npm run lint` ✓ (0 errors) ·
-`npm run dev` ✓ (dev server tested with new features).
+### [Updated]
+- **Component**: KMapSimulator UI Restoration
+- **Description**: Restored the rich educational UI features that were lost during the architecture hardening
+- **Reasoning**: The previous working UI had comprehensive educational content that was accidentally removed during the architectural refactoring. Users reported the previous UI was much better for learning.
+- **Impact**: Enhanced user experience with restored educational features while preserving the architectural improvements from the 4-layer architecture
+- **Files Modified**: 
+  - `src/simulators/kmap/KMapSimulator.tsx` - Restored Learning Guide section with 6 expandable educational topics, enhanced Cell Info Popup with detailed information, added show/hide toggle for educational content, removed non-functional mode selector
 
-### M5 — K-map Learning Experience · First interactive K-map screen (Task 10 / KMAP-05, 11, 12)
+### [Updated]
+- **Component**: KMapSimulator Educational Content
+- **Description**: Restored comprehensive Learning Guide with 6 expandable sections covering Minterms/Maxterms, Binary to Product Terms, SOP/POS structures, Variable Complementation Rules, and K-Map Fundamentals
+- **Reasoning**: These educational sections were essential for student learning and were lost during architectural refactoring
+- **Impact**: Students now have access to progressive learning content with explanations of fundamental concepts
+- **Files Modified**: 
+  - `src/simulators/kmap/KMapSimulator.tsx` - Added expandable educational sections with show/hide toggle
 
-Completed on 2026-08-09.
+### [Updated]
+- **Component**: KMapSimulator Cell Information Popup
+- **Description**: Reverted cell information popup from tooltip back to modal style per user preference
+- **Reasoning**: User preferred the previous modal-style popup over the tooltip implementation
+- **Impact**: Cell information now appears as a modal below the K-map grid instead of a floating tooltip
+- **Files Modified**: 
+  - `src/simulators/kmap/KMapSimulator.tsx` - Reverted CellInfoPopup to modal style with close button
+  - `src/simulators/kmap/components/KMapGrid.tsx` - Removed mouse position tracking and tooltip positioning
 
-**Interactive K-map learning screen with UI wired to educational + logic engines.**
+### [Updated]
+- **Component**: KMapSimulator POS Display
+- **Description**: Fixed POS group display to properly show parentheses around sum terms
+- **Reasoning**: POS groups were not displaying with proper parentheses, making them harder to read
+- **Impact**: POS expressions now display correctly as (A+B)(C+D) format
+- **Files Modified**: 
+  - `src/simulators/kmap/KMapSimulator.tsx` - Added parentheses around POS group sumText display
 
-- `src/simulators/kmap/KMapSimulator.tsx` (new) — Main K-map simulator component with:
-  - Variable count selector (2/3/4 variables)
-  - Interactive SVG-based K-map grid with Gray code labels
-  - Cell value input (0, 1, X don't-care) with click-to-set
-  - Cell selection with Ctrl+click for group validation
-  - Real-time SOP/POS simplification display
-  - Group validation feedback using the grouping engine
-  - Educational content panel with learning guides
-  - Clear K-map functionality
-- `src/App.tsx` — Added navigation system with view state management (home/kmap)
-  - Added simulator cards section on landing page
-  - Implemented back navigation from simulator to home
-  - K-map simulator marked as "Ready", others as "Coming Soon"
-- `src/tests/App.test.tsx` — Updated tests for new navigation and simulator cards
-- `src/stores/kmapStore.ts` — Cleaned up duplicate constant declaration (DEFAULT_VARIABLES)
+### [Updated]
+- **Component**: KMapSimulator Example Library
+- **Description**: Moved Example Library below Learning Guide and made it collapsible
+- **Reasoning**: User requested better organization with Example Library positioned after educational content
+- **Impact**: Improved UI organization with collapsible Example Library section
+- **Files Modified**: 
+  - `src/simulators/kmap/KMapSimulator.tsx` - Moved Example Library to collapsible ExpandableSection after Learning Guide
 
-**Verification:** `npm test` ✓ (124 tests) · `npm run lint` ✓ (0 errors) ·
-`npm run dev` ✓ (dev server running on http://localhost:5174).
+### [Updated]
+- **Component**: KMapSimulator Cell Interaction
+- **Description**: Changed cell information trigger from hover to right-click
+- **Reasoning**: Modal-style popup works better with explicit user action rather than hover
+- **Impact**: Users can now right-click on cells to see detailed information without accidental triggers
+- **Files Modified**: 
+  - `src/simulators/kmap/KMapSimulator.tsx` - Added handleCellInfo function and right-click handler
+  - `src/simulators/kmap/components/KMapGrid.tsx` - Added onContextMenu handler for cell info display
 
-### M4 — K-map Core · SOP/POS Simplification engine (Task 09 / KMAP-08..10)
+## [0.2.0] - 2026-08-10 00:35
 
-Completed on 2026-08-09.
+### [Fixed]
+- **Component**: KMapSimulator Cell Info Popup
+- **Description**: Fixed cell information popup appearing only for a fraction of a second when hovering over cells
+- **Reasoning**: The original implementation used a full-screen modal overlay that caused mouse events to immediately leave the cell, triggering the popup to close. Changed to a tooltip-style popup positioned near the mouse cursor.
+- **Impact**: Improved user experience - cell information now remains visible while hovering
+- **Files Modified**: 
+  - `src/simulators/kmap/KMapSimulator.tsx` - Changed CellInfoPopup from modal to tooltip, added mouse position tracking
+  - `src/simulators/kmap/components/KMapGrid.tsx` - Added onMouseMove prop and event handler
 
-**SOP + POS simplification engine.** Pure TS, no UI. Groups only rectangle-like
-power-of-two sets (wrap-aware), greedily covers all 1s (SOP) and 0s (POS),
-treats don't-cares as either.
+### [Refactored]
+- **Component**: Project Structure - Dead File Cleanup
+- **Description**: Moved unused placeholder directories, empty files, and educational concept components to trash folder
+- **Reasoning**: The project contained many empty placeholder directories and unused components that added unnecessary complexity. This cleanup reduces project clutter while preserving files for potential future use.
+- **Impact**: Cleaner project structure, 20+ files moved to trash, 6 tests removed (concept tests), no breaking changes to active functionality
+- **Files Modified**: 
+  - Created `trash/` directory structure
+  - Moved empty directories: `src/education/assessments/`, `src/education/lessons/`, `src/core/combinational/`, `src/core/number-systems/`, `src/core/sequential/`, `src/components/`, `src/pages/`, `src/simulators/adders/`, `src/simulators/flipflops/`, `src/simulators/gates/`, `src/utils/`
+  - Moved placeholder files: `.gitkeep` files in various directories, placeholder index files
+  - Moved unused components: `src/education/concepts/` directory and corresponding tests
+  - Created `trash/trash.md` with detailed documentation
 
-- `src/core/kmap/simplify.ts` (new) — `CellGroup`, `GroupedTerm`
-  (cells + SOP product & POS sum literal sets + rendered text),
-  `Simplification`, `minimizeCover` (greedy cover: scores fresh cells first,
-  larger groups on ties, ignores candidates with zero uncovered cells),
-  `simplify` (builds SOP from ones+don't-cares and POS from zeros+don't-cares;
-  constant-0 map → `sop: "0"` / constant-1 → `sop: "1"`/`pos: "1"`),
-  `enumerateRectangles`, `cyclicBlocks`, `rectangleCells`,
-  `productFromGroup`/`sumFromGroup`, `sumText`.
-- `src/core/kmap/index.ts` — barrel now also exports `./simplify`.
-- `src/tests/core/kmap/simplify.test.ts` (new) — 8 tests: constant-1 and
-  constant-0 reductions, single minterm → `A'BC`, adjacent pair → `BC`,
-  SOP logical-equivalence against the truth table, POS logical-equivalence,
-  4-var don't-care equivalence on required cells, and minimizer group-size
-  preference.
-- Fixed during iteration: replaced an earlier draft whose `termForGroup`
-  reference and polarity derivation were wrong; corrected the all-zero /
-  all-one POS polarity (constant `1` vs `0`), and exported the module.
+### [Fixed]
+- **Component**: TypeScript Compilation Errors
+- **Description**: Fixed multiple TypeScript compilation errors across 5 files
+- **Reasoning**: Import paths and type definitions were incorrect after the architecture hardening. The application layer exports needed to be properly structured.
+- **Impact**: TypeScript compilation now succeeds, no errors, all 197 tests passing
+- **Files Modified**:
+  - `src/core/kmap/verification.ts` - Added missing GroupValidation import
+  - `src/simulators/kmap/KMapSimulator.tsx` - Fixed prop name, removed unused imports
+  - `src/stores/kmapStore.ts` - Fixed import paths and removed duplicate exports
+  - `src/tests/application/kmap/use-cases.test.ts` - Fixed import source for types
 
-**Verification:** `npm test` ✓ (122 tests) · `npm run build` ✓ ·
-`npm run lint` ✓ (0 errors).
+### [Added]
+- **Component**: Development Guidelines
+- **Description**: Created agent.md file with comprehensive development guidelines
+- **Reasoning**: Need clear rules for file management, change documentation, and development workflow to prevent breaking changes and maintain code quality.
+- **Impact**: Established clear development standards for all future work
+- **Files Modified**: 
+  - Created `agent.md` with comprehensive development guidelines
 
-### M3 — Boolean · Term extraction (Task 08)
+## [0.1.0] - 2026-08-09 17:50
 
-Completed on 2026-08-09.
+### [Added]
+- **Component**: Architecture Hardening - Application Layer
+- **Description**: Implemented 4-layer architecture by introducing Application/Orchestration layer
+- **Reasoning**: Original architecture had orchestration logic scattered in presentation layer and Zustand store. Needed clear separation of concerns.
+- **Impact**: Evolved from 3-layer to 4-layer architecture, added 203 tests (up from 124), all existing functionality preserved
+- **Files Modified**:
+  - Created `src/application/` structure with actions, modes, use-cases
+  - Created `src/application/learning/steps.ts` for reusable learning step model
+  - Refactored `src/stores/kmapStore.ts` to use application layer
+  - Refactored `src/simulators/kmap/KMapSimulator.tsx` to extract orchestration logic
+  - Enhanced `src/education/` structure with rules, hints, misconceptions modules
+  - Added `src/core/kmap/verification.ts` for solution verification boundaries
+  - Enhanced `src/simulators/kmap/examples/examples.ts` with metadata
+  - Added comprehensive test suites for new architecture
 
-**Boolean term parsing + K-map group → term extraction.** Pure TS, no UI.
+### [Added]
+- **Component**: K-Map Simulator
+- **Description**: Initial implementation of interactive Karnaugh Map simulator
+- **Reasoning**: Core educational tool for Boolean function simplification
+- **Impact**: Fully functional K-map simulator with 2, 3, 4 variable support
+- **Files Modified**:
+  - Created complete K-map simulator implementation
+  - Implemented core mathematical logic in `src/core/kmap/`
+  - Created educational engine in `src/education/`
+  - Built React UI components
+  - Added comprehensive test coverage
 
-- `src/core/boolean/terms.ts` (new) — `Literal`/`Term`, `literalToString`,
-  `termToString`, `parseTerm` (single-char literal names, accepts prime
-  marks `'`, `′`, `!`, `¯`), `sortTerm`, `termsEqual`,
-  `mintermToTerm`/`mintermToString` (decimal minterm → full product term,
-  variable[0] = MSB), `termForGroup` (drops the variable that varies across
-  a group, keeps/negates constants, ignores don't-cares),
-  `groupToTermString`.
-- `src/core/boolean/index.ts` (new) — barrel export.
-- `src/tests/core/boolean/terms.test.ts` (new) — 20 tests: formatting,
-  parsing (incl. alternate negation marks, duplicate rejection), order-free
-  equality, minterm conversion (3- and 4-var, out-of-range), group extraction
-  (`A'BC + ABC → BC`, 4-corner group → `B'D'`, single minterm, don't-care
-  handling), round-trip through `parseTerm`.
+## [0.0.1] - 2026-08-08
 
-**Verification:** `npm test` ✓ (114 tests) · `npm run build` ✓ ·
-`npm run lint` ✓ (0 errors).
+### [Added]
+- **Component**: Project Initialization
+- **Description**: Initial project setup with basic structure
+- **Reasoning**: Foundation for Digital Logic Concept Lab
+- **Impact**: Basic project structure with React, TypeScript, Vite
+- **Files Modified**:
+  - Initial project configuration
+  - Basic directory structure
+  - Development environment setup
 
-### M4 — K-map Core · Grouping validator (Task 07 / KMAP-07)
+---
 
-Completed on 2026-08-09.
+## Version Format
+- **MAJOR**: Incompatible API changes
+- **MINOR**: Backwards-compatible functionality additions
+- **PATCH**: Backwards-compatible bug fixes
 
-**K-map grouping validator.** Pure TS, no UI.
-
-- `src/core/kmap/grouping.ts` (new) — `Group` (readonly minterm list),
-  `GroupIssue`/`GroupValidation`, `isPowerOfTwo`, `groupSize`,
-  `occupiedAxes`, `validateGroup` (structural: power-of-two size, rectangular
-  shape with power-of-two sides, cyclic contiguity including wrap-around
-  edges, bounds/empty checks), `validateSopGroup` (adds the
-  "cannot group a 0" rule for SOP), `groupsOverlap`, `unionCoverage`,
-  `isRedundant`. Issue messages are written for the misconception engine
-  (e.g. "Groups must contain a power of 2: 1, 2, 4, 8, 16...").
-- `src/core/kmap/index.ts` — barrel now also exports `./grouping`.
-- `src/tests/core/kmap/grouping.test.ts` (new) — 23 tests: power-of-two
-  bounds, single/row/column/2x2/wrapped-row/corner groups accepted, 6-cell,
-  diagonal, L-shape, empty, and out-of-range groups rejected; SOP zero rule;
-  overlap; union coverage; redundancy.
-
-**Verification:** `npm test` ✓ (94 tests) · `npm run build` ✓ ·
-`npm run lint` ✓ (0 errors).
-
-### M4 — K-map Core · Adjacency engine (Task 06 / KMAP-06)
-
-Completed on 2026-08-09.
-
-**K-map adjacency engine.** Pure TS, no UI.
-
-- `src/core/kmap/adjacency.ts` (new) — `neighborsOf` (4 neighbors with
-  horizontal/vertical wrap-around), `adjacencyDirection` (classifies
-  `horizontal`/`vertical`/`null`, handles edge wrap-around),
-  `isAdjacent`, `adjacentMinterms`, `differInOneVariable` (Gray adjacency
-  invariant via Hamming distance). Throws on out-of-bounds coordinates.
-- `src/core/kmap/index.ts` — barrel now also exports `./adjacency`.
-- `src/tests/core/kmap/adjacency.test.ts` (new) — 15 tests: neighbor lookup
-  (interior + horizontal/vertical wrap), direction classification,
-  adjacency (incl. wrap) acceptance/rejection for 2/3/4-variable maps,
-  the Gray "differ in exactly one variable" invariant across every adjacent
-  pair of a 4-variable map, and shared behaviour of `adjacentMinterms`.
-
-**Verification:** `npm test` ✓ (71 tests) · `npm run build` ✓ ·
-`npm run lint` ✓ (0 errors).
-
-### M4 — K-map Core · Data model + truth-table mapping (Tasks 04 + 05 / KMAP-01 + KMAP-03)
-
-Completed on 2026-08-09.
-
-**K-map data model and deterministic truth-table mapping.** Pure TS, no UI.
-
-- `src/core/kmap/model.ts` (new) — `CellValue` (`0 | 1 | 'X' | null`),
-  `KMapCell` (row/col/minterm/grayRow/grayCol/value), `KMapLayout`
-  (variables, row/col split, gray labels), `KMapModel`. Functions:
-  `createKMap` (supports 2/3/4+ variables; grid 2x2 / 2x4 / 4x4 with standard
-  gray layout), `mintermToCell`/`cellToMinterm` (deterministic mapping,
-  validated by full round-trips), `cellAt`, `valueAt`, immutable `withValue`,
-  `mintermsWithValue`, `minterms`, `maxterms`, `dontCares`. Rejects fewer
-  than 2 variables.
-- `src/core/kmap/truth-table.ts` (new) — `TruthTable`, `createTruthTable`
-  (validates row count), `truthTableToKMap` (rows → cells deterministically),
-  `mintermsToKMap` (from minterm/maxterm/don't-care spec), `kmapToTruthTable`
-  (round-trip).
-- `src/core/kmap/index.ts` — barrel now exports gray/model/truth-table.
-- `src/tests/core/kmap/model.test.ts` (new) — 17 tests: grid sizes and
-  standard minterm layouts for 2/3/4 variables, gray labels, minterm↔cell
-  round-trips, value setting and derived sets, immutability.
-- `src/tests/core/kmap/truth-table.test.ts` (new) — 9 tests: table
-  construction/validation, deterministic 2- and 3-variable mapping,
-  minterm-based construction, don't-care precedence, round-trip.
-
-**Verification:** `npm test` ✓ (56 tests) · `npm run build` ✓ ·
-`npm run lint` ✓ (0 errors).
-
-### M4 — K-map Core · Gray-code engine (Task 03 / KMAP-02)
-
-Completed on 2026-08-09.
-
-**Reusable, tested Gray-code module.** Pure TypeScript in the logic layer.
-
-- `src/core/kmap/gray.ts` (new) — `toGrayCode`/`fromGrayCode` (binary↔Gray),
-  `generateGrayCode(bits)` producing the reflected sequence (2^bits entries,
-  first entry 0), `grayString`, `hammingDistance`, `isAdjacentSequence`, plus
-  input validation (non-negative integer bit count).
-- `src/core/kmap/index.ts` (new) — barrel export for the kmap core module.
-- `src/tests/core/kmap/gray.test.ts` (new) — 10 tests covering the acceptance
-  criteria: exactly 2^n entries; first entry zero; consecutive entries differ
-  by exactly one bit; classic 2-bit `00 01 11 10` and 3-bit sequences;
-  round-trip conversion; fractional-bit rejection.
-
-**Verification:** `npm test` ✓ (30 tests) · `npm run build` ✓ ·
-`npm run lint` ✓ (0 errors).
-
-### M1 — Educational Engine (Task 02)
-
-Completed on 2026-08-09.
-
-**Concept schema + explanation engine.** Pure TypeScript, no UI. First academic
-layer implemented.
-
-- `src/education/concepts/types.ts` (new) — `Concept` schema with `title`,
-  `objective`, `prerequisites`, `explanation`, `visualization`,
-  `interaction`, `commonMistakes`, `hints`, `assessment`; supporting types
-  `CommonMistake`, `Hint`, `Assessment`, `VisualizationHook`, `InteractionHook`.
-- `src/education/concepts/concept.ts` (new) — `createConcept` builder that
-  applies defaults (empty prerequisites/mistakes/hints, null hooks) and sorts
-  hints by level; `validateConcept` returning a list of validation errors
-  (required text, unique hint levels, valid assessment index); `hasValidated`.
-- `src/education/explanations/types.ts` (new) — `Rule`, `TransformationStep`
-  (before/after terms + rule), `Explanation` (what/why/rule/changes/notice),
-  `VariableChange` classification (`kept`/`changed`/`eliminated`/`introduced`).
-- `src/education/explanations/rules.ts` (new) — curated `RULES` catalog
-  (Combination, Distributive, Absorption, Complement, Identity, De Morgan).
-- `src/education/explanations/terms.ts` (new) — term parsing (handles
-  `'`, `′`, `!`), `getVariables`, `termVariables`, `analyzeVariableChanges`
-  which determines eliminated/changed/kept/introduced per variable.
-- `src/education/explanations/engine.ts` (new) — `buildExplanation(step)`
-  turns a `TransformationStep` into the full pedagogy: *what happened, why,
-  which rule, which variables changed/disappeared/stayed, what to notice*;
-  `formatTerms`, `summarize`.
-- `src/education/{concepts,explanations}/index.ts` (new) — barrel exports.
-- `src/tests/education/concept.test.ts` (new) — 6 tests (defaults, hint
-  sorting, validation cases).
-- `src/tests/education/explanation.test.ts` (new) — 12 tests (elimination,
-  kept/changed/introduced detection, formatting, full-step explanation).
-
-**Verification:** `npm run build` ✓ · `npm run lint` ✓ (0 errors) ·
-`npm test` ✓ (20 tests passed).
-
-### M0 — Repository Foundation (Task 01)
-
-Completed on 2026-08-09.
-
-**Scaffolded the project. Nothing academic implemented yet.**
-
-- `package.json` — created Vite React-TS scaffold; renamed to `digital-logic-concept-lab` (v0.1.0); added scripts `test`, `test:watch`; installed runtime deps `zustand`, `framer-motion`; dev deps `tailwindcss`, `@tailwindcss/vite`, `vitest`, `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`, `jsdom`.
-- `vite.config.ts` — added Tailwind plugin, Vitest config (`jsdom` env, globals, `setupFiles: src/tests/setup.ts`), `vitest/config` type reference.
-- `src/index.css` — replaced scaffold styles with Tailwind v4 import.
-- `src/App.tsx` — replaced scaffold demo with a minimal landing view showing the product name and the three-layer architecture (Logic Engine / Educational Engine / Presentation).
-- `src/main.tsx` — left intact (root mount).
-- `index.html` — title changed to "Digital Logic Concept Lab".
-- `src/tests/setup.ts` — added `@testing-library/jest-dom/vitest` setup.
-- `src/tests/App.test.tsx` — smoke tests: renders product heading; renders the three architecture layers.
-- `tsconfig.app.json` — enabled `strict`, added `DOM.Iterable` lib and `vitest/globals` to types.
-- `README.md` — rewrote from Vite template to describe the project, repo layout, and scripts.
-- **Directory layout created** (empty, documented with `.gitkeep`):
-  - `src/core/{number-systems,boolean,kmap,combinational,sequential}`
-  - `src/education/{concepts,lessons,explanations,misconceptions,hints,assessments}`
-  - `src/simulators/{kmap,gates,adders,flipflops}`
-  - `src/components`, `src/pages`, `src/stores`, `src/utils`, `src/tests`
-- Removed scaffold assets (`src/App.css`, `src/assets/*`, unused public icons kept as favicon).
-
-**Verification:** `npm run build` ✓ · `npm run lint` ✓ (0 errors) · `npm test` ✓ (2 tests passed).
+## Change Types
+- **[Added]**: New features
+- **[Fixed]**: Bug fixes
+- **[Refactored]**: Code restructuring without functional changes
+- **[Removed]**: Removed features or files
+- **[Updated]**: Updates to existing functionality
+- **[Security]**: Security-related changes
+- **[Performance]**: Performance improvements
