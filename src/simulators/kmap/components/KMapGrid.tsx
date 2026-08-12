@@ -101,6 +101,7 @@ export default function KMapGrid({
           row.map((cell, colIndex) => (
             <g key={`${rowIndex}-${colIndex}`}>
               <rect
+                data-testid={`kmap-cell-${cell.minterm}`}
                 x={labelWidth + colIndex * cellSize}
                 y={headerHeight + rowIndex * cellSize}
                 width={cellSize}

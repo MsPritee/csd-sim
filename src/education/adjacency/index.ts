@@ -1,5 +1,5 @@
 import type { KMapModel } from '../../core/kmap'
-import { valueAt, isAdjacent, variableDifference } from '../../core/kmap'
+import { valueAt, isAdjacent, variableDifference, adjacentMinterms } from '../../core/kmap'
 import { validateGroup, isPowerOfTwo } from '../../core/kmap/grouping'
 import {
   analyzeGroupVariables,
@@ -82,6 +82,19 @@ export function explainAdjacency(kmap: KMapModel, a: number, b: number): Adjacen
     conceptual,
     math,
   }
+}
+
+/**
+ * Educational summary of a single cell's adjacency: which neighbours it has and
+ * why that matters for grouping. Empty when the cell has no adjacent cells.
+ */
+export function explainNeighbors(kmap: KMapModel, minterm: number): readonly string[] {
+  const neighbors = adjacentMinterms(kmap, minterm)
+  if (neighbors.length === 0) return []
+  return [
+    `Adjacent cells differ by exactly one variable: ${neighbors.map((m) => `m${m}`).join(', ')}.`,
+    'They can be merged into a larger group to eliminate that differing variable.',
+  ]
 }
 
 export interface ReasonLine {

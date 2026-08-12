@@ -12,40 +12,15 @@ import { usePracticeStore, buildProblemModel } from '../../../stores/practiceSto
 import KMapGrid from '../components/KMapGrid'
 import { hintsForProblem, hintLevelUsed } from '../../../education/practice/hints'
 import { conceptTitle } from '../../../education/practice/objectives'
-import { categoryLabel } from '../../../education/practice/mastery'
-import type { MistakeDetail } from '../../../education/practice/types'
+import SessionDone from './components/SessionDone'
+import GroupControls from './components/GroupControls'
+import FormedGroups from './components/FormedGroups'
+import MistakeList from './components/MistakeList'
 
 export default function PracticeProblem() {
   const problem = usePracticeStore((s) => s.problem)
   if (!problem) return <SessionDone />
   return <ProblemInner key={problem.id} />
-}
-
-function SessionDone() {
-  const index = usePracticeStore((s) => s.index)
-  const sessionSize = usePracticeStore((s) => s.sessionSize)
-  const backHome = usePracticeStore((s) => s.backHome)
-  const mastery = usePracticeStore((s) => s.conceptMastery)
-  const mastered = Object.values(mastery).filter((m) => m.status === 'MASTERED').length
-  const total = Object.keys(mastery).length
-
-  return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900 p-8 text-center">
-      <h2 className="text-2xl font-bold text-violet-300">Session complete</h2>
-      <p className="mt-3 text-slate-300">
-        You finished all {sessionSize} problems (reached #{index + 1}).
-      </p>
-      <p className="mt-2 text-slate-400">
-        Mastered concepts: <span className="text-green-400">{mastered}</span> / {total}
-      </p>
-      <button
-        onClick={backHome}
-        className="mt-6 rounded bg-violet-600 px-5 py-2.5 font-medium text-white hover:bg-violet-500"
-      >
-        Back to practice home
-      </button>
-    </div>
-  )
 }
 
 function ProblemInner() {
@@ -135,61 +110,18 @@ function ProblemInner() {
       </div>
 
       {/* Group controls */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <button
-          onClick={addGroup}
-          disabled={locked || selectedCells.length === 0}
-          className="rounded bg-slate-700 px-3 py-2 text-sm font-medium text-slate-100 enabled:hover:bg-slate-600 disabled:opacity-40"
-        >
-          Add selected ({selectedCells.length}) as group
-        </button>
-        <button
-          onClick={clearSelection}
-          disabled={locked || selectedCells.length === 0}
-          className="rounded border border-slate-600 px-3 py-2 text-sm text-slate-300 enabled:hover:bg-slate-800 disabled:opacity-40"
-        >
-          Clear selection
-        </button>
-        <button
-          onClick={clearGroups}
-          disabled={locked || groups.length === 0}
-          className="rounded border border-slate-600 px-3 py-2 text-sm text-slate-300 enabled:hover:bg-slate-800 disabled:opacity-40"
-        >
-          Clear all groups
-        </button>
-        <button
-          onClick={submitGroups}
-          disabled={locked || groups.length === 0}
-          className="rounded bg-violet-600 px-3 py-2 text-sm font-medium text-white enabled:hover:bg-violet-500 disabled:opacity-40"
-        >
-          Check my groups
-        </button>
-      </div>
+      <GroupControls
+        locked={locked}
+        selectedCount={selectedCells.length}
+        groupCount={groups.length}
+        onAddGroup={addGroup}
+        onClearSelection={clearSelection}
+        onClearGroups={clearGroups}
+        onSubmitGroups={submitGroups}
+      />
 
       {/* Formed groups */}
-      {groups.length > 0 && (
-        <ul className="mt-3 space-y-1.5">
-          {groups.map((g, gi) => (
-            <li key={gi} className="flex items-center gap-2 text-sm">
-              <span
-                className="inline-block h-3 w-3 rounded-full"
-                style={{ background: `hsl(${(gi * 137) % 360},70%,60%)` }}
-              />
-              <span className="font-mono text-slate-200">
-                [{g.join(', ')}]
-              </span>
-              <button
-                onClick={() => removeGroup(gi)}
-                disabled={locked}
-                className="ml-auto text-slate-500 hover:text-red-400 disabled:opacity-40"
-                aria-label={`Remove group ${gi + 1}`}
-              >
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <FormedGroups groups={groups} locked={locked} onRemoveGroup={removeGroup} />
 
       {/* Hints */}
       {mode !== 'challenge' && hintsUsed < hintList.length && (
@@ -319,39 +251,6 @@ function ScoreBanner({
         <span className="font-semibold">{label}</span>
         <span className="text-sm font-mono">Score: {evaluation.score}/100</span>
       </div>
-    </div>
-  )
-}
-
-function MistakeList({ mistakes }: { mistakes: readonly MistakeDetail[] }) {
-  if (mistakes.length === 0) return null
-  return (
-    <div className="mt-3 space-y-3">
-      <h3 className="text-sm font-semibold text-slate-200">
-        Feedback · {mistakes.length} issue{mistakes.length === 1 ? '' : 's'}
-      </h3>
-      {mistakes.map((m, i) => (
-        <div key={i} className="rounded border border-slate-700 bg-slate-950/40 p-3">
-          <div className="flex items-center gap-2">
-            <span className="rounded bg-red-900/50 px-2 py-0.5 text-xs font-medium text-red-300">
-              {categoryLabel(m.category)}
-            </span>
-            <span className="text-sm text-slate-200">{m.happened}</span>
-          </div>
-          <p className="mt-2 text-sm text-slate-400">
-            <span className="font-medium text-slate-300">Why: </span>
-            {m.why}
-          </p>
-          <p className="mt-1 text-sm text-emerald-300/90">
-            <span className="font-medium">Correct idea: </span>
-            {m.correctConcept}
-          </p>
-          <p className="mt-1 text-sm text-violet-300/90">
-            <span className="font-medium">Try: </span>
-            {m.tryAgain}
-          </p>
-        </div>
-      ))}
     </div>
   )
 }

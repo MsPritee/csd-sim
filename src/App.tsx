@@ -49,11 +49,12 @@ export default function App() {
         <p className="mt-4 text-slate-300">
           Concept → Visualization → Experimentation → Practice. The K-map module
           is the flagship; the logic and educational engines are seeded across a
-          strict three-layer architecture.
+          strict four-layer architecture.
         </p>
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Layer title="Logic Engine" note="Pure TS · Boolean / K-map / circuits" />
           <Layer title="Educational Engine" note="Why · hints · mistakes · steps" />
+          <Layer title="Application" note="Orchestration · use-cases · no math" />
           <Layer title="Presentation" note="React · SVG · motion · UI" />
         </div>
 

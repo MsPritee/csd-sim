@@ -47,7 +47,7 @@ export default function VerifyPanel({
       outputOnes: simplified.filter((v) => v === 1).length,
     }
     return { original, comparison, metrics }
-  }, [kmap, asKey(sopTerms, posTerms, showSOP)])
+  }, [kmap, showSOP, sopTerms, posTerms])
 
   const uncovered = useMemo(
     () =>
@@ -163,13 +163,4 @@ export default function VerifyPanel({
       )}
     </SectionCard>
   )
-}
-
-/** Stable memo key so useMemo re-runs when term strings change identity. */
-function asKey(
-  _sop: readonly string[],
-  _pos: readonly string[],
-  _showSop: boolean,
-): string {
-  return `${_showSop ? 'sop' : 'pos'}:${JSON.stringify(_sop)}|${JSON.stringify(_pos)}`
 }

@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Playwright
+test-results
+playwright-report
+blob-report
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +27,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+
+
+agent.md
+CHANGELOG.md
+KMapSimulator.tsx
+
+PLAN2.md
+PLAN1.md
+PLAN.md
+trash
