@@ -117,7 +117,7 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
       : `ΠM(${Array.from(zeros).sort((a, b) => a - b).join(', ')})`
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
       <div className="max-w-6xl mx-auto">
         <SimulatorHeader onBackToHome={onBackToHome} onOpenPractice={onOpenPractice} />
 

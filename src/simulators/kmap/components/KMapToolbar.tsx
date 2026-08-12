@@ -20,14 +20,15 @@ export default function KMapToolbar({
   onClear,
 }: KMapToolbarProps) {
   return (
-    <div className="bg-slate-900 rounded-lg p-6 mb-6 border border-slate-700">
+    <div className="rounded-lg p-6 mb-6 border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
       <div className="flex flex-wrap gap-4 items-center">
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Variables</label>
+          <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Variables</label>
           <select
             value={variableCount}
             onChange={(e) => onVariableCountChange(Number(e.target.value) as 2 | 3 | 4)}
-            className="bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white"
+            className="rounded px-3 py-2 transition-colors"
+            style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
           >
             <option value={2}>2 Variables (A, B)</option>
             <option value={3}>3 Variables (A, B, C)</option>
@@ -36,17 +37,27 @@ export default function KMapToolbar({
         </div>
 
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Cell Value</label>
+          <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Cell Value</label>
           <div className="flex gap-2">
             {[0, 1, 'X'].map((val) => (
               <button
                 key={val}
                 onClick={() => onCurrentValueChange(val as CellValue)}
-                className={`px-3 py-2 rounded ${
-                  currentValue === val
-                    ? 'bg-violet-600 text-white'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
+                className="px-3 py-2 rounded transition-colors"
+                style={{
+                  backgroundColor: currentValue === val ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+                  color: currentValue === val ? '#ffffff' : 'var(--text-secondary)'
+                }}
+                onMouseEnter={(e) => {
+                  if (currentValue !== val) {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (currentValue !== val) {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+                  }
+                }}
               >
                 {val === 'X' ? 'X' : val}
               </button>
@@ -55,14 +66,24 @@ export default function KMapToolbar({
         </div>
 
         <div>
-          <label className="block text-sm text-slate-400 mb-1">Display</label>
+          <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Display</label>
           <button
             onClick={onToggleMintermNumbers}
-            className={`px-3 py-2 rounded ${
-              showMintermNumbers
-                ? 'bg-violet-600 text-white'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
+            className="px-3 py-2 rounded transition-colors"
+            style={{
+              backgroundColor: showMintermNumbers ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+              color: showMintermNumbers ? '#ffffff' : 'var(--text-secondary)'
+            }}
+            onMouseEnter={(e) => {
+              if (!showMintermNumbers) {
+                e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!showMintermNumbers) {
+                e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+              }
+            }}
           >
             {showMintermNumbers ? 'Hide Numbers' : 'Show Numbers'}
           </button>
@@ -70,7 +91,10 @@ export default function KMapToolbar({
 
         <button
           onClick={onClear}
-          className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white ml-auto"
+          className="px-4 py-2 rounded text-white ml-auto transition-colors"
+          style={{ backgroundColor: '#dc2626' }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
         >
           Clear K-Map
         </button>

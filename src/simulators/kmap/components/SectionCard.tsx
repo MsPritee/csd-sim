@@ -19,11 +19,11 @@ export default function SectionCard({
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <div className="bg-slate-900 rounded-lg border border-slate-700">
+    <div className="rounded-lg border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
       <div className="flex items-center justify-between gap-3 p-4">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-violet-300">{title}</h2>
-          {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--accent-primary)' }}>{title}</h2>
+          {subtitle && <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{subtitle}</p>}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {headerRight}
@@ -31,7 +31,10 @@ export default function SectionCard({
             onClick={() => setOpen(!open)}
             aria-expanded={open}
             aria-label={`Toggle ${title}`}
-            className="flex items-center justify-center h-8 w-8 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xl leading-none"
+            className="flex items-center justify-center h-8 w-8 rounded text-xl leading-none transition-colors"
+            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
           >
             {open ? '−' : '+'}
           </button>

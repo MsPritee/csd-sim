@@ -16,10 +16,22 @@ export default function ExampleLibrary({ onLoadExample }: ExampleLibraryProps) {
           <button
             key={example.id}
             onClick={() => onLoadExample(example)}
-            className="w-full text-left p-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-violet-500/50 transition-colors"
+            className="w-full text-left p-3 rounded-lg border transition-colors"
+            style={{
+              backgroundColor: 'var(--bg-tertiary)',
+              borderColor: 'var(--border-color)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+              e.currentTarget.style.borderColor = 'var(--accent-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+              e.currentTarget.style.borderColor = 'var(--border-color)';
+            }}
           >
-            <div className="font-medium text-white">{example.name}</div>
-            <div className="text-sm text-slate-400 mt-1">{example.description}</div>
+            <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{example.name}</div>
+            <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{example.description}</div>
           </button>
         ))}
       </div>

@@ -4,6 +4,9 @@ import './index.css'
 import App from './App.tsx'
 import ErrorBoundary from './ErrorBoundary.tsx'
 import { reportError } from './errorReporter'
+import BrandHeader from './components/BrandHeader'
+import BrandFooter from './components/BrandFooter'
+import { ThemeProvider } from './contexts/ThemeContext'
 
 window.addEventListener('error', (event) => {
   reportError('window', event.error ?? new Error(event.message ?? 'Unhandled window error'))
@@ -17,8 +20,12 @@ window.addEventListener('unhandledrejection', (event) => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <ThemeProvider>
+      <ErrorBoundary>
+        <BrandHeader />
+        <App />
+        <BrandFooter />
+      </ErrorBoundary>
+    </ThemeProvider>
   </StrictMode>,
 )

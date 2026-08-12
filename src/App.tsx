@@ -18,21 +18,27 @@ export default function App() {
     }
     return (
       <div>
-        <nav className="bg-slate-900 border-b border-slate-700 px-6 py-3 flex items-center gap-4">
+        <nav className="px-6 py-3 flex items-center gap-4 border-b" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
           <button
             onClick={() => setCurrentView('home')}
-            className="text-violet-400 hover:text-violet-300 font-medium"
+            className="font-medium transition-colors"
+            style={{ color: 'var(--accent-primary)' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
           >
             ← Back to Home
           </button>
           <button
             onClick={() => setCurrentView('kmap')}
-            className="text-violet-400 hover:text-violet-300 font-medium text-sm"
+            className="font-medium text-sm transition-colors"
+            style={{ color: 'var(--accent-primary)' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
           >
             ← K-map simulator
           </button>
         </nav>
-        <div className="min-h-screen bg-slate-950 text-slate-100">
+        <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
           <KMapPractice />
         </div>
       </div>
@@ -40,17 +46,14 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto max-w-4xl px-6 py-16">
-        <p className="font-mono text-sm uppercase tracking-widest text-violet-400">
-          M0 · Repository Foundation
-        </p>
-        <h1 className="mt-4 text-4xl font-bold">Digital Logic Concept Lab</h1>
-        <p className="mt-4 text-slate-300">
+    <main className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+      <div className="mx-auto max-w-4xl px-4 py-2">
+        <h1 className="mt-4 text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>Digital Logic Concept Lab</h1>
+        {/* <p className="mt-4 text-slate-300">
           Concept → Visualization → Experimentation → Practice. The K-map module
           is the flagship; the logic and educational engines are seeded across a
           strict four-layer architecture.
-        </p>
+        </p> */}
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Layer title="Logic Engine" note="Pure TS · Boolean / K-map / circuits" />
           <Layer title="Educational Engine" note="Why · hints · mistakes · steps" />
@@ -58,8 +61,8 @@ export default function App() {
           <Layer title="Presentation" note="React · SVG · motion · UI" />
         </div>
 
-        <div className="mt-12">
-          <h2 className="text-2xl font-semibold text-violet-300 mb-4">Available Simulators</h2>
+        <div className="mt-8">
+          <h2 className="text-2xl font-semibold mb-4" style={{ color: 'var(--accent-primary)' }}>Available Simulators</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <SimulatorCard
               title="Karnaugh Map Simulator"
@@ -94,9 +97,9 @@ export default function App() {
 
 function Layer({ title, note }: { title: string; note: string }) {
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900 p-4">
-      <h2 className="font-semibold text-violet-300">{title}</h2>
-      <p className="mt-1 text-sm text-slate-400">{note}</p>
+    <div className="rounded-lg border p-4" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
+      <h2 className="font-semibold" style={{ color: 'var(--accent-primary)' }}>{title}</h2>
+      <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>{note}</p>
     </div>
   )
 }
@@ -118,25 +121,37 @@ function SimulatorCard({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`text-left rounded-lg border p-6 transition-colors ${
-        disabled
-          ? 'border-slate-800 bg-slate-900/50 cursor-not-allowed opacity-50'
-          : 'border-slate-700 bg-slate-900 hover:border-violet-500 hover:bg-slate-800 cursor-pointer'
-      }`}
+      className={`text-left rounded-lg border p-6 transition-colors ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+      style={{
+        backgroundColor: disabled ? 'var(--bg-tertiary)' : 'var(--bg-card)',
+        borderColor: 'var(--border-color)'
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.borderColor = 'var(--accent-primary)';
+          e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.borderColor = 'var(--border-color)';
+          e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+        }
+      }}
     >
       <div className="flex items-start justify-between">
-        <h3 className="font-semibold text-lg text-violet-300">{title}</h3>
+        <h3 className="font-semibold text-lg" style={{ color: 'var(--accent-primary)' }}>{title}</h3>
         <span
-          className={`text-xs px-2 py-1 rounded ${
-            status === 'Ready'
-              ? 'bg-green-900/50 text-green-400'
-              : 'bg-slate-800 text-slate-400'
-          }`}
+          className={`text-xs px-2 py-1 rounded ${status === 'Ready' ? '' : ''}`}
+          style={{
+            backgroundColor: status === 'Ready' ? 'var(--success-bg)' : 'var(--bg-tertiary)',
+            color: status === 'Ready' ? 'var(--success-text)' : 'var(--text-muted)'
+          }}
         >
           {status}
         </span>
       </div>
-      <p className="mt-2 text-sm text-slate-400">{description}</p>
+      <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{description}</p>
     </button>
   )
 }
