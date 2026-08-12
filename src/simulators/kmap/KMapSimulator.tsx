@@ -131,7 +131,7 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
           onClear={clearKMap}
         />
 
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid items-start md:grid-cols-2 gap-6">
           {/* K-Map Grid */}
           <div className="bg-slate-900 rounded-lg p-6 border border-slate-700">
             <div className="flex items-center justify-between mb-2">
