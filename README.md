@@ -1,4 +1,4 @@
-# Digital Logic Concept Lab
+# DigiWorld — Digital Logic Concept Lab
 
 An interactive Digital Logic **learning platform** that teaches students *why* digital circuits work.
 

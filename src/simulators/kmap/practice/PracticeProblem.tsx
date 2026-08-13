@@ -68,7 +68,7 @@ function ProblemInner() {
     evaluation !== null && evaluation.equivalent && evaluation.coversRequired && evaluation.minimal
 
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900 p-6">
+    <div className="rounded-lg border border-slate-700 bg-slate-900 p-4 sm:p-6">
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -169,7 +169,7 @@ function ProblemInner() {
           </button>
         </div>
         {submittedExpression && locked && (
-          <p className="mt-2 font-mono text-sm text-slate-400">
+          <p className="mt-2 font-mono text-sm text-slate-400 break-words">
             Submitted: {submittedExpression}
           </p>
         )}

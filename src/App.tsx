@@ -18,7 +18,7 @@ export default function App() {
     }
     return (
       <div>
-        <nav className="px-6 py-3 flex items-center gap-4 border-b" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+        <nav className="px-4 py-1.5 flex items-center gap-4 border-b" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
           <button
             onClick={() => setCurrentView('home')}
             className="font-medium transition-colors"
@@ -26,7 +26,7 @@ export default function App() {
             onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary-hover)'}
             onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
           >
-            ← Back to Home
+            Back to Home
           </button>
           <button
             onClick={() => setCurrentView('kmap')}
@@ -46,9 +46,9 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+    <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <div className="mx-auto max-w-4xl px-4 py-2">
-        <h1 className="mt-4 text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>Digital Logic Concept Lab</h1>
+        {/* <h1 className="mt-4 text-3xl sm:text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>DigiWorld</h1> */}
         {/* <p className="mt-4 text-slate-300">
           Concept → Visualization → Experimentation → Practice. The K-map module
           is the flagship; the logic and educational engines are seeded across a
@@ -61,7 +61,7 @@ export default function App() {
           <Layer title="Presentation" note="React · SVG · motion · UI" />
         </div>
 
-        <div className="mt-8">
+        <div className="mt-8 mb-2">
           <h2 className="text-2xl font-semibold mb-4" style={{ color: 'var(--accent-primary)' }}>Available Simulators</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <SimulatorCard

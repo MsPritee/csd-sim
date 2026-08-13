@@ -9,29 +9,37 @@ export default function BrandHeader() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="sticky top-0 z-50 flex h-12 items-center justify-between gap-3 border-b px-4 backdrop-blur" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}>
-      <a
-        href={ERP_HOME}
-        // target="_blank"
-        rel="noopener noreferrer"
-        className="flex min-w-0 items-center gap-2 hover:opacity-80 transition-opacity"
+    <header className="sticky top-0 z-50 grid h-12 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b px-4 backdrop-blur" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}>
+      <div className="min-w-0 flex justify-start">
+        <a
+          href={ERP_HOME}
+          // target="_blank"
+          rel="noopener noreferrer"
+          className="flex min-w-0 items-center gap-2 hover:opacity-80 transition-opacity"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          <Logo 
+                src={logo}
+                alt="Chalk and Duster Logo"
+                title="Chalk and Duster"
+                subtitle="Learn With Fun"
+                neonBorder={true}
+              />
+          {/* <img
+            src={logo}
+            alt="Chalk and Duster logo"
+            className="h-7 w-7 shrink-0 rounded-md object-cover"
+          /> */}
+          {/* <span className="truncate text-sm font-semibold tracking-tight">Chalk &amp; Duster</span> */}
+        </a>
+      </div>
+      <span
+        className="truncate whitespace-nowrap text-base font-bold tracking-tight sm:text-lg"
         style={{ color: 'var(--text-primary)' }}
       >
-        <Logo 
-              src={logo}
-              alt="Chalk and Duster Logo"
-              title="Chalk and Duster"
-              subtitle="Learn With Fun"
-              neonBorder={true}
-            />
-        {/* <img
-          src={logo}
-          alt="Chalk and Duster logo"
-          className="h-7 w-7 shrink-0 rounded-md object-cover"
-        /> */}
-        {/* <span className="truncate text-sm font-semibold tracking-tight">Chalk &amp; Duster</span> */}
-      </a>
-      <div className="flex items-center gap-2">
+        DigiWorld
+      </span>
+      <div className="min-w-0 flex items-center justify-end gap-2">
         <button
           onClick={toggleTheme}
           className="shrink-0 rounded-md p-2 transition-colors"

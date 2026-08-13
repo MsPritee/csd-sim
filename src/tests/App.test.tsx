@@ -5,7 +5,7 @@ describe('App', () => {
   it('renders the product name', () => {
     render(<App />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'Digital Logic Concept Lab',
+      'DigiWorld',
     )
   })
 

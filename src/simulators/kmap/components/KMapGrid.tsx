@@ -1,6 +1,12 @@
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { KMapModel } from '../../../core/kmap'
 import { adjacentMinterms } from '../../../core/kmap'
 import { KMAP_HIGHLIGHT_COLORS } from './kmapHighlight'
+
+const BASE_CELL_SIZE = 60
+const MIN_CELL_SIZE = 34
+const LABEL_WIDTH = 40
+const HEADER_HEIGHT = 40
 
 interface KMapGridProps {
   kmap: KMapModel
@@ -32,9 +38,29 @@ export default function KMapGrid({
   showAdjacency = false,
 }: KMapGridProps) {
   const { layout, cells } = kmap
-  const cellSize = 60
-  const labelWidth = 40
-  const headerHeight = 40
+
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [cellSize, setCellSize] = useState(BASE_CELL_SIZE)
+
+  useLayoutEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const fitCell = (clientWidth: number) => {
+      const available = clientWidth - LABEL_WIDTH
+      const want = layout.cols > 0 ? available / layout.cols : BASE_CELL_SIZE
+      setCellSize(Math.max(MIN_CELL_SIZE, Math.min(BASE_CELL_SIZE, want)))
+    }
+    fitCell(el.clientWidth)
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) fitCell(entry.contentRect.width)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [layout.cols])
+
+  const labelWidth = LABEL_WIDTH
+  const headerHeight = HEADER_HEIGHT
 
   const adjacencySet =
     showAdjacency && hoveredCell !== null
@@ -45,11 +71,12 @@ export default function KMapGrid({
   const height = layout.rows * cellSize + headerHeight
 
   return (
-    <div className="overflow-x-auto">
-      <svg 
-        width={width} 
-        height={height} 
-        className="mx-auto"
+    <div ref={wrapRef} className="overflow-x-auto">
+      <svg
+        width={width}
+        height={height}
+        className="mx-auto max-w-full"
+        style={{ height: 'auto' }}
       >
         {/* Column Labels */}
         {layout.colLabels.map((label, i) => (

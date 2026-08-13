@@ -25,7 +25,7 @@ async function clickOneCell(page: Page): Promise<void> {
 test.describe('App shell', () => {
   test('loads the home page', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'Digital Logic Concept Lab' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'DigiWorld' })).toBeVisible()
     expect(await page.getByRole('button').count()).toBeGreaterThan(0)
   })
 })

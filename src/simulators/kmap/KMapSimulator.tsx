@@ -117,7 +117,7 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
       : `ΠM(${Array.from(zeros).sort((a, b) => a - b).join(', ')})`
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-6">
       <div className="max-w-6xl mx-auto">
         <SimulatorHeader onBackToHome={onBackToHome} onOpenPractice={onOpenPractice} />
 
@@ -133,9 +133,9 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
 
         <div className="grid items-start md:grid-cols-2 gap-6">
           {/* K-Map Grid */}
-          <div className="bg-slate-900 rounded-lg p-6 border border-slate-700">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xl font-semibold text-violet-300">K-Map Grid</h2>
+          <div className="bg-slate-900 rounded-lg p-4 sm:p-6 border border-slate-700">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <h2 className="text-lg sm:text-xl font-semibold text-violet-300">K-Map Grid</h2>
               <div className="inline-flex rounded bg-slate-800 p-0.5" role="group" aria-label="View mode">
                 {(['kmap', 'both', 'truth'] as const).map((mode) => (
                   <button
@@ -219,7 +219,7 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
               }
             >
 
-              <div className="bg-slate-800 rounded p-4 font-mono text-lg">
+              <div className="bg-slate-800 rounded p-4 font-mono text-lg break-words">
                 {simplifiedExpression}
               </div>
 

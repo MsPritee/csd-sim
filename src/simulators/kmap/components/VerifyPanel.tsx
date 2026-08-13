@@ -80,16 +80,16 @@ export default function VerifyPanel({
       }
     >
 
-      <div className="grid grid-cols-2 gap-2 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
         <div className="rounded border border-slate-700 bg-slate-800 p-3">
           <p className="text-xs text-slate-400">Original (K-map)</p>
-          <p className="mt-1 font-mono text-slate-200">
+          <p className="mt-1 font-mono text-slate-200 break-words">
             {originalExpression || (showSOP ? 'sum of minterms' : 'product of maxterms')}
           </p>
         </div>
         <div className="rounded border border-slate-700 bg-slate-800 p-3">
           <p className="text-xs text-slate-400">Simplified {showSOP ? 'SOP' : 'POS'}</p>
-          <p className="mt-1 font-mono text-violet-200">{simplifiedExpression}</p>
+          <p className="mt-1 font-mono text-violet-200 break-words">{simplifiedExpression}</p>
         </div>
       </div>
 
