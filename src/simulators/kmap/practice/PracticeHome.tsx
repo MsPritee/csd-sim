@@ -45,17 +45,14 @@ export default function PracticeHome() {
   const started = Object.values(mastery).some((m) => m.attempts > 0)
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
-      <p className="font-mono text-sm uppercase tracking-widest text-violet-400">
-        P2 · K-Map Practice
-      </p>
-      <h1 className="mt-2 text-3xl font-bold">Guided Learning &amp; Mastery</h1>
-      <p className="mt-3 max-w-2xl text-slate-300">
+    <div className="mx-auto max-w-4xl px-4 py-2">
+      <h1 className="mt-2  text-3xl font-bold">K-Map Practice</h1>
+      {/* <p className="mt-3 max-w-2xl text-slate-300">
         Work through problems by concept, get mistake-level feedback with the{' '}
         <em>why</em>, revisit correct concepts, and adapt to the areas that need
         the most work. Every answer is checked against the real simplification
         engine — never by string matching.
-      </p>
+      </p> */}
 
       {started && (
         <section className="mt-8 rounded-lg border border-slate-700 bg-slate-900 p-5">
