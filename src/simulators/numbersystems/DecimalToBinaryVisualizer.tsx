@@ -1,6 +1,14 @@
+/**
+ * DecimalToBinaryVisualizer - Visual decimal to binary conversion using traditional repeated division
+ * Shows the classic handwritten division format with step-by-step animations
+ */
+
 import { useState, useEffect, useCallback, useRef } from 'react'
+import type { DivisionStep } from '../../core/numbersystems/types'
 import { generateDivisionSteps } from '../../core/numbersystems/binary'
+import { Card } from '../../components/ui/Card'
 import { DivisionTable } from './DivisionTable'
+import { RemainderIndicator } from './RemainderIndicator'
 import { ConversionControls } from './ConversionControls'
 
 interface DecimalToBinaryVisualizerProps {
@@ -10,67 +18,243 @@ interface DecimalToBinaryVisualizerProps {
 
 type AnimationSpeed = 'slow' | 'normal' | 'fast'
 type AnimationPhase = 'division' | 'reading' | 'complete'
-const SPEED_MAP: Record<AnimationSpeed, number> = { slow: 2000, normal: 1000, fast: 500 }
 
-export function DecimalToBinaryVisualizer({ decimalValue }: DecimalToBinaryVisualizerProps) {
-  const result = generateDivisionSteps(decimalValue, 2)
-  const steps = result.success ? result.steps : []
-  const finalResult = result.success ? result.result : ''
+const SPEED_MAP: Record<AnimationSpeed, number> = {
+  slow: 2000,
+  normal: 1000,
+  fast: 500,
+}
+
+export function DecimalToBinaryVisualizer({ decimalValue, onBack: _onBack }: DecimalToBinaryVisualizerProps) {
+  // Generate division steps using core function
+  const divisionResult = generateDivisionSteps(decimalValue, 2)
+  const steps = divisionResult.success ? divisionResult.steps : []
+  const finalResult = divisionResult.success ? divisionResult.result : ''
+
+  // Animation state
   const [currentStep, setCurrentStep] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState<AnimationSpeed>('normal')
   const [selectedStep, setSelectedStep] = useState<number | null>(null)
   const [phase, setPhase] = useState<AnimationPhase>('division')
+  const [showReadingAnimation, setShowReadingAnimation] = useState(false)
   const [assembledBinary, setAssembledBinary] = useState('')
-  const [showGuide, setShowGuide] = useState(true)
-  const timer = useRef<number | null>(null)
-  const readingTimer = useRef<number | null>(null)
+  const [showExplanation, setShowExplanation] = useState(true)
 
-  const reset = useCallback(() => {
-    setCurrentStep(0); setIsPlaying(false); setSelectedStep(null); setPhase('division'); setAssembledBinary('')
-    if (timer.current) window.clearTimeout(timer.current)
-    if (readingTimer.current) window.clearInterval(readingTimer.current)
-    timer.current = null; readingTimer.current = null
-  }, [])
-  useEffect(() => { reset() }, [decimalValue, reset])
+  // Ref for animation timing and intervals
+  const animationRef = useRef<number | null>(null)
+  const readingIntervalRef = useRef<number | null>(null)
 
+  // Reset animation when decimal value changes
   useEffect(() => {
-    if (!isPlaying) return
+    setCurrentStep(0)
+    setIsPlaying(false)
+    setSelectedStep(null)
+    setPhase('division')
+    setShowReadingAnimation(false)
+    setAssembledBinary('')
+    setShowExplanation(true)
+    
+    // Cleanup any existing animations
+    if (animationRef.current) {
+      clearTimeout(animationRef.current)
+      animationRef.current = null
+    }
+    if (readingIntervalRef.current) {
+      clearInterval(readingIntervalRef.current)
+      readingIntervalRef.current = null
+    }
+  }, [decimalValue])
+
+  // Auto-play animation
+  useEffect(() => {
+    if (!isPlaying) {
+      if (animationRef.current) {
+        clearTimeout(animationRef.current)
+        animationRef.current = null
+      }
+      return
+    }
+
     if (phase === 'division') {
-      if (currentStep < steps.length - 1) timer.current = window.setTimeout(() => setCurrentStep((s) => s + 1), SPEED_MAP[speed])
-      else { setPhase('reading'); setIsPlaying(false) }
-    } else if (phase === 'reading' && !readingTimer.current) {
-      const remainders = steps.map((s) => s.remainder).reverse(); let index = 0
-      readingTimer.current = window.setInterval(() => {
-        if (index < remainders.length) setAssembledBinary((value) => value + remainders[index++])
-        else { window.clearInterval(readingTimer.current!); readingTimer.current = null; setPhase('complete'); setIsPlaying(false) }
+      if (currentStep < steps.length - 1) {
+        animationRef.current = window.setTimeout(() => {
+          setCurrentStep((prev) => prev + 1)
+        }, SPEED_MAP[speed])
+      } else {
+        // Division complete, move to reading phase
+        setPhase('reading')
+        setShowReadingAnimation(true)
+        setIsPlaying(false)
+      }
+    } else if (phase === 'reading' && !readingIntervalRef.current) {
+      // Handle reading animation
+      const remainders = steps.map((step) => step.remainder).reverse()
+      let currentIndex = 0
+
+      readingIntervalRef.current = window.setInterval(() => {
+        if (currentIndex < remainders.length) {
+          setAssembledBinary((prev) => prev + remainders[currentIndex]!)
+          currentIndex++
+        } else {
+          if (readingIntervalRef.current) {
+            clearInterval(readingIntervalRef.current)
+            readingIntervalRef.current = null
+          }
+          setPhase('complete')
+          setIsPlaying(false)
+        }
       }, SPEED_MAP[speed] / 2)
     }
-    return () => { if (timer.current) window.clearTimeout(timer.current) }
-  }, [isPlaying, phase, currentStep, speed, steps])
 
-  const next = useCallback(() => {
-    if (phase === 'division') currentStep < steps.length - 1 ? setCurrentStep((s) => s + 1) : setPhase('reading')
-    else if (phase === 'reading') {
-      const remainders = steps.map((s) => s.remainder).reverse()
-      assembledBinary.length < remainders.length ? setAssembledBinary((v) => v + remainders[assembledBinary.length]) : setPhase('complete')
+    return () => {
+      if (animationRef.current) {
+        clearTimeout(animationRef.current)
+        animationRef.current = null
+      }
+      if (readingIntervalRef.current) {
+        clearInterval(readingIntervalRef.current)
+        readingIntervalRef.current = null
+      }
     }
-  }, [phase, currentStep, steps, assembledBinary.length])
-  const previous = useCallback(() => {
-    if (phase === 'complete') { setPhase('reading'); setAssembledBinary(steps.map((s) => s.remainder).reverse().join('')) }
-    else if (phase === 'reading' && assembledBinary) setAssembledBinary((v) => v.slice(0, -1))
-    else if (phase === 'reading') setPhase('division')
-    else setCurrentStep((s) => Math.max(0, s - 1))
-  }, [phase, assembledBinary, steps])
+  }, [isPlaying, currentStep, steps.length, speed, phase])
 
+  const nextStep = useCallback(() => {
+    if (phase === 'division') {
+      if (currentStep < steps.length - 1) {
+        setCurrentStep((prev) => prev + 1)
+      } else {
+        setPhase('reading')
+        setShowReadingAnimation(true)
+      }
+    } else if (phase === 'reading') {
+      if (!showReadingAnimation) {
+        setShowReadingAnimation(true)
+      } else {
+        // Manual step through reading animation
+        const remainders = steps.map((step) => step.remainder).reverse()
+        const nextIndex = assembledBinary.length
+        if (nextIndex < remainders.length) {
+          setAssembledBinary((prev) => prev + remainders[nextIndex]!)
+        } else {
+          setPhase('complete')
+        }
+      }
+    }
+  }, [currentStep, steps.length, phase, showReadingAnimation, assembledBinary])
+
+  const previousStep = useCallback(() => {
+    if (phase === 'complete') {
+      setPhase('reading')
+      const remainders = steps.map((step) => step.remainder).reverse()
+      setAssembledBinary(remainders.join(''))
+    } else if (phase === 'reading' && showReadingAnimation && assembledBinary.length > 0) {
+      // Go back one step in reading animation
+      setAssembledBinary((prev) => prev.slice(0, -1))
+    } else if (phase === 'reading' && showReadingAnimation) {
+      setShowReadingAnimation(false)
+      setAssembledBinary('')
+    } else if (phase === 'reading') {
+      setPhase('division')
+      setCurrentStep(steps.length - 1)
+    } else if (phase === 'division') {
+      setCurrentStep((prev) => Math.max(0, prev - 1))
+    }
+  }, [phase, showReadingAnimation, steps.length, assembledBinary])
+
+  const togglePlay = useCallback(() => {
+    setIsPlaying((prev) => !prev)
+  }, [])
+
+  const resetAnimation = useCallback(() => {
+    setCurrentStep(0)
+    setIsPlaying(false)
+    setSelectedStep(null)
+    setPhase('division')
+    setShowReadingAnimation(false)
+    setAssembledBinary('')
+    setShowExplanation(true)
+    
+    // Cleanup animations
+    if (animationRef.current) {
+      clearTimeout(animationRef.current)
+      animationRef.current = null
+    }
+    if (readingIntervalRef.current) {
+      clearInterval(readingIntervalRef.current)
+      readingIntervalRef.current = null
+    }
+  }, [])
+
+  const getStepExplanation = (step: DivisionStep) => {
+    if (step.isFinalStep) {
+      return `${step.dividend} ÷ 2 = ${step.quotient} remainder ${step.remainder}. The quotient has reached 0, so we stop dividing. This remainder (${step.remainder}) is the most significant bit (MSB).`
+    }
+    return `${step.dividend} ÷ 2 = ${step.quotient} remainder ${step.remainder}. We continue dividing the quotient (${step.quotient}) by 2.`
+  }
+
+  const getCurrentExplanation = () => {
+    if (phase === 'complete') {
+      return 'Conversion complete! The binary representation is built by reading the remainders from bottom to top.'
+    }
+    if (phase === 'reading') {
+      return 'Reading remainders from bottom to top to build the binary number...'
+    }
+    if (selectedStep !== null && steps[selectedStep]) {
+      return getStepExplanation(steps[selectedStep]!)
+    }
+    if (steps[currentStep]) {
+      return getStepExplanation(steps[currentStep]!)
+    }
+    return ''
+  }
+
+  const getRemaindersForDisplay = () => {
+    return steps.map((step) => step.remainder)
+  }
+
+  const handleStepSelect = (index: number) => {
+    setSelectedStep(index)
+    setCurrentStep(index)
+  }
+
+  const formatBinaryDisplay = () => {
+    if (phase === 'complete') {
+      return finalResult
+    }
+    if (assembledBinary) {
+      return assembledBinary.padEnd(finalResult.length, '_')
+    }
+    return '_'.repeat(finalResult.length || steps.length)
+  }
+
+  // Handle keyboard navigation
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next() } else if (e.key === 'ArrowLeft') previous(); else if (e.key === 'Enter') setIsPlaying((v) => !v); else if (e.key === 'Escape') reset() }
-    window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey)
-  }, [next, previous, reset])
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowRight':
+        case ' ':
+          e.preventDefault()
+          nextStep()
+          break
+        case 'ArrowLeft':
+          e.preventDefault()
+          previousStep()
+          break
+        case 'Enter':
+          e.preventDefault()
+          togglePlay()
+          break
+        case 'Escape':
+          e.preventDefault()
+          resetAnimation()
+          break
+      }
+    }
 
-  if (!result.success) return <div className="dv-error">{result.error || 'Failed to generate division steps'}</div>
-  const displayedBinary = phase === 'complete' ? finalResult : assembledBinary || '_'.repeat(finalResult.length)
-  const stepNumber = phase === 'complete' ? 5 : phase === 'reading' ? 4 : currentStep === 0 ? 1 : 2
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [nextStep, previousStep, togglePlay, resetAnimation])
 
   if (!divisionResult.success) {
     return (
@@ -83,7 +267,7 @@ export function DecimalToBinaryVisualizer({ decimalValue }: DecimalToBinaryVisua
   }
 
   return (
-    <div className="division-visualizer space-y-6">
+    <div className="space-y-6">
       {/* Header with Decimal and Binary displays */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Decimal Input Display */}
@@ -289,6 +473,5 @@ export function DecimalToBinaryVisualizer({ decimalValue }: DecimalToBinaryVisua
         </div>
       </Card>
     </div>
-    <ConversionControls isPlaying={isPlaying} onTogglePlay={() => setIsPlaying((v) => !v)} onNext={next} onPrevious={previous} onReset={reset} speed={speed} onSpeedChange={setSpeed} currentStep={currentStep} totalSteps={steps.length} phase={phase} />
-  </main>
+  )
 }
