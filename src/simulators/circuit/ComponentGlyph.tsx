@@ -1,3 +1,4 @@
+import React from 'react'
 import { attrNumber, packedValue, bitValue } from '../../core/circuit'
 import type { NetValue } from '../../core/circuit'
 import type { AttrValue } from '../../core/circuit/descriptors'
@@ -86,7 +87,7 @@ function getPinLabels(type: string): { inputs: string[]; outputs: string[] } {
 }
 
 /** Draw CLK notch indicator (triangle pointing inward) */
-function drawClockNotch(x: number, y: number): JSX.Element {
+function drawClockNotch(x: number, y: number): React.ReactElement {
   return (
     <polygon
       points={`${x},${y - 4} ${x + 6},${y} ${x},${y + 4}`}
@@ -96,7 +97,7 @@ function drawClockNotch(x: number, y: number): JSX.Element {
 }
 
 /** Draw pin label text */
-function drawPinLabel(label: string, x: number, y: number, isInput: boolean): JSX.Element {
+function drawPinLabel(label: string, x: number, y: number, isInput: boolean): React.ReactElement {
   return (
     <text
       x={x}

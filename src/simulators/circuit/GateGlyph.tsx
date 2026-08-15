@@ -26,7 +26,6 @@ const OUT_ROW = 50
 const BASE_BODY_WIDTH = 70
 const BASE_BODY_HEIGHT = 66
 const OUTPUT_TIP_X = 104
-const OUTPUT_PIN_X = 132
 
 /**
  * Compute shield wings for gates where inputs make the body taller than wide.
@@ -101,20 +100,6 @@ function xorPath(bodyWidth: number, bodyHeight: number): { path: string; accent:
   const accent = `M ${left - 10} ${top} Q ${c2x - 10} ${OUT_ROW} ${left - 10} ${bottom}`
   
   return { path, accent }
-}
-
-/**
- * Logisim NOT gate triangle: (-10,0),(-29,-7),(-29,7) with bubble touching the output tip.
- * Scaled to fit the 140px box.
- */
-function notPath(): string {
-  const base = OUTPUT_TIP_X - 44
-  const tip = OUTPUT_TIP_X
-  const halfHeight = 16
-  const top = OUT_ROW - halfHeight
-  const bottom = OUT_ROW + halfHeight
-  
-  return `M ${tip} ${OUT_ROW} L ${base} ${top} L ${base} ${bottom} Z`
 }
 
 /** Compact triangle used by BUFFER / controlled gates. */
@@ -247,7 +232,7 @@ function pinRows(count: number): number[] {
 }
 
 /** Check if a gate has negation dongles on specific inputs. */
-function hasNegationDongle(gate: GateType, inputIndex: number): boolean {
+function hasNegationDongle(_gate: GateType, _inputIndex: number): boolean {
   // Currently no gates have input-side negation dongles in this implementation
   // This function is reserved for future expansion (e.g., NAND with input negation)
   return false
