@@ -108,7 +108,7 @@ export function unwrapIndexList(text: string): string {
   const t = text.trim()
   const m = INDEX_WRAPPERS.exec(t)
   if (m) return m[1] ?? ''
-  return t.replace(/^[(\[]/, '').replace(/[)\]]$/, '')
+  return t.replace(/^[([]/, '').replace(/[)\]]$/, '')
 }
 
 export interface IndexCounts {

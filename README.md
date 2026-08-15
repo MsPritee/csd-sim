@@ -2,7 +2,9 @@
 
 An interactive Digital Logic **learning platform** that teaches students *why* digital circuits work.
 
-See [PLAN.md](./PLAN.md) for the full product roadmap and architecture.
+See [PLAN.md](./PLAN.md) for the full product roadmap and architecture, and
+[CIRCUIT-PARITY.md](./CIRCUIT-PARITY.md) for the Logisim.app-style Circuit
+Designer roadmap.
 
 ## Tech Stack
 
@@ -35,6 +37,27 @@ src/
 | `npm run test:e2e` | Run Playwright E2E tests (Chromium) |
 
 Continuous integration runs lint → audit → build → unit tests → E2E on every push/PR via GitHub Actions (see `.github/workflows/ci.yml`).
+
+## Features
+
+### Number Systems Simulator
+The Number Systems Simulator includes powerful visual features for enhanced learning:
+
+- **Visual Conversion Modes**: Animated step-by-step visualizations of conversion processes
+- **Multiple Conversion Methods**: Division method, position value method, and bit grouping
+- **Interactive Animations**: Play/pause controls, adjustable speed, step-by-step navigation
+- **Practice Mode**: Guided exercises with immediate feedback and difficulty levels
+- **Exploration Mode**: Free experimentation with real-time conversions and method comparison
+- **Educational Hints**: Context-sensitive guidance and explanations
+- **Cross-System Comparison**: View values across all number systems simultaneously
+
+### Visual Features Benefits
+- **Enhanced Understanding**: Visual representations make abstract concepts concrete
+- **Improved Retention**: Multisensory encoding creates stronger memory traces
+- **Increased Engagement**: Interactive elements maintain learner motivation
+- **Personalized Learning**: Multiple pathways accommodate diverse learning styles
+
+For detailed information about visual features, see [VISUAL_FEATURES_GUIDE.md](./VISUAL_FEATURES_GUIDE.md) and [EDUCATIONAL_BENEFITS.md](./EDUCATIONAL_BENEFITS.md).
 
 ## Change Log
 

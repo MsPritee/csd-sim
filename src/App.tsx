@@ -1,11 +1,26 @@
 import { useState } from 'react'
 import KMapSimulator from './simulators/kmap/KMapSimulator'
 import KMapPractice from './simulators/kmap/practice/KMapPractice'
+import { GateSimulator } from './simulators/gates'
+import { CircuitDesigner } from './simulators/circuit'
+import { NumberSystemsSimulator } from './simulators/numbersystems'
 
-type View = 'home' | 'kmap' | 'practice'
+type View = 'home' | 'kmap' | 'practice' | 'gates' | 'circuit' | 'numbersystems'
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('home')
+
+  if (currentView === 'gates') {
+    return <GateSimulator onBackToHome={() => setCurrentView('home')} />
+  }
+
+  if (currentView === 'circuit') {
+    return <CircuitDesigner onBackToHome={() => setCurrentView('home')} />
+  }
+
+  if (currentView === 'numbersystems') {
+    return <NumberSystemsSimulator onBackToHome={() => setCurrentView('home')} key="numbersystems" />
+  }
 
   if (currentView === 'kmap' || currentView === 'practice') {
     if (currentView === 'kmap') {
@@ -54,15 +69,15 @@ export default function App() {
           is the flagship; the logic and educational engines are seeded across a
           strict four-layer architecture.
         </p> */}
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Layer title="Logic Engine" note="Pure TS · Boolean / K-map / circuits" />
           <Layer title="Educational Engine" note="Why · hints · mistakes · steps" />
           <Layer title="Application" note="Orchestration · use-cases · no math" />
           <Layer title="Presentation" note="React · SVG · motion · UI" />
-        </div>
+        </div> */}
 
-        <div className="mt-8 mb-2">
-          <h2 className="text-2xl font-semibold mb-4" style={{ color: 'var(--accent-primary)' }}>Available Simulators</h2>
+        <div className="mt-2 mb-2">
+          <h2 className="text-2xl font-semibold mb-2" style={{ color: 'var(--accent-primary)' }}>Simulators</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <SimulatorCard
               title="Karnaugh Map Simulator"
@@ -72,9 +87,21 @@ export default function App() {
             />
             <SimulatorCard
               title="Logic Gates"
-              description="Coming soon - Interactive logic gate simulator"
-              status="Coming Soon"
-              disabled
+              description="Interactive logic gate simulator with togglable inputs, truth tables, and step-by-step explanations."
+              status="Ready"
+              onClick={() => setCurrentView('gates')}
+            />
+            <SimulatorCard
+              title="Circuit Designer"
+              description="Logisim-style visual canvas: drag gates and pins, draw wires, toggle inputs, and simulate combinational circuits live."
+              status="Ready"
+              onClick={() => setCurrentView('circuit')}
+            />
+            <SimulatorCard
+              title="Number Systems"
+              description="Interactive number systems converter supporting decimal, binary, hexadecimal, and octal with educational content and advanced visualizations."
+              status="Ready"
+              onClick={() => setCurrentView('numbersystems')}
             />
             <SimulatorCard
               title="Combinational Circuits"
@@ -92,15 +119,6 @@ export default function App() {
         </div>
       </div>
     </main>
-  )
-}
-
-function Layer({ title, note }: { title: string; note: string }) {
-  return (
-    <div className="rounded-lg border p-4" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
-      <h2 className="font-semibold" style={{ color: 'var(--accent-primary)' }}>{title}</h2>
-      <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>{note}</p>
-    </div>
   )
 }
 

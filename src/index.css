@@ -22,9 +22,14 @@
   --border-light: #334155;         /* slate-700 */
   --accent-primary: #8b5cf6;       /* violet-500 */
   --accent-primary-hover: #a78bfa; /* violet-400 */
+  --accent-secondary: #a78bfa;     /* violet-400 */
   --accent-bg: rgba(139, 92, 246, 0.1);
-  --success-bg: rgba(34, 197, 94, 0.5);
+  --success-bg: rgba(34, 197, 94, 0.15);
   --success-text: #4ade80;
+  --success-border: #22c55e;
+  --error-bg: rgba(239, 68, 68, 0.15);
+  --error-text: #f87171;
+  --error-border: #ef4444;
 }
 
 .light {
@@ -39,9 +44,14 @@
   --border-light: #cbd5e1;         /* slate-300 */
   --accent-primary: #7c3aed;       /* violet-600 */
   --accent-primary-hover: #8b5cf6; /* violet-500 */
+  --accent-secondary: #8b5cf6;     /* violet-500 */
   --accent-bg: rgba(124, 58, 237, 0.1);
   --success-bg: rgba(34, 197, 94, 0.1);
   --success-text: #16a34a;
+  --success-border: #22c55e;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --error-text: #ef4444;
+  --error-border: #f87171;
 }
 
 /* Global theme overrides for common Tailwind classes */
@@ -240,4 +250,327 @@
 }
 @utility animate-spin-reverse {
   animation: spin-reverse 3s linear infinite;
+}
+
+/* Phase 8 — propagation visuals: a bright dash that "flows" along a wire whose
+   signal is active-high, hinting at the direction of signal propagation. */
+@keyframes wire-flow {
+  to { stroke-dashoffset: -24; }
+}
+.wire-high-flow {
+  stroke-dasharray: 8 16;
+  animation: wire-flow 0.6s linear infinite;
+}
+
+/* Phase 8 — a soft glow that pulses on the signal line of a just-updated wire. */
+@keyframes wire-glow {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.9; }
+}
+.wire-glow-high {
+  animation: wire-glow 1.2s ease-in-out infinite;
+}
+
+/* UI Enhancement Animations for Binary to Decimal Visualizer */
+
+/* Fade animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes fade-in-up {
+  from { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in-down {
+  from { 
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide animations for accordion and phase changes */
+@keyframes slide-down {
+  from { 
+    max-height: 0;
+    opacity: 0;
+  }
+  to { 
+    max-height: 500px;
+    opacity: 1;
+  }
+}
+@keyframes slide-up {
+  from { 
+    max-height: 500px;
+    opacity: 1;
+  }
+  to { 
+    max-height: 0;
+    opacity: 0;
+  }
+}
+
+/* Scale animations for active elements */
+@keyframes scale-in {
+  from { 
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to { 
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes scale-out {
+  from { 
+    transform: scale(1);
+    opacity: 1;
+  }
+  to { 
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+@keyframes scale-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* Subtle bounce for hover effects */
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* Soft pulse for active indicators */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Number counting animation */
+@keyframes number-count {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* Celebration/confetti burst effect */
+@keyframes confetti-burst {
+  0% { 
+    transform: scale(0) rotate(0deg);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.2) rotate(180deg);
+    opacity: 1;
+  }
+  100% { 
+    transform: scale(1) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* Flow arrow animation */
+@keyframes flow-dash {
+  to { stroke-dashoffset: -20; }
+}
+
+/* Ripple effect */
+@keyframes ripple {
+  0% { 
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  100% { 
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Utility classes for animations */
+.animate-fade-in {
+  animation: fade-in 0.3s ease-in-out;
+}
+.animate-fade-out {
+  animation: fade-out 0.3s ease-in-out;
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out;
+}
+.animate-fade-in-down {
+  animation: fade-in-down 0.4s ease-out;
+}
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
+}
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
+}
+.animate-scale-out {
+  animation: scale-out 0.3s ease-out;
+}
+.animate-bounce-subtle {
+  animation: bounce-subtle 0.3s ease-in-out;
+}
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+.animate-number-count {
+  animation: number-count 0.5s ease-out;
+}
+.animate-confetti-burst {
+  animation: confetti-burst 0.8s ease-out forwards;
+}
+.animate-flow-dash {
+  animation: flow-dash 1s linear infinite;
+}
+
+/* Transition utilities */
+.transition-all-smooth {
+  transition: all 0.3s ease-in-out;
+}
+.transition-colors-smooth {
+  transition: color 0.3s ease-in-out, background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+}
+.transition-transform-smooth {
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Responsive sizing utilities for digit cells */
+.digit-cell-auto {
+  min-width: 3rem;
+  max-width: 4rem;
+  width: auto;
+}
+.digit-cell-compact {
+  min-width: 2.5rem;
+  max-width: 3rem;
+  width: auto;
+}
+.digit-cell-large {
+  min-width: 3.5rem;
+  max-width: 4.5rem;
+  width: auto;
+}
+
+/* Binary-to-decimal conversion grid */
+.conversion-grid-wrapper {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.conversion-grid-cell-inner:focus-visible {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+}
+
+.conversion-grid-cell-active .conversion-grid-cell-inner {
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.35);
+  transform: scale(1.05);
+}
+
+.conversion-grid-cell-selected .conversion-grid-cell-inner {
+  box-shadow: 0 0 0 2px #8b5cf6;
+}
+
+.conversion-grid-connector {
+  width: 2px;
+  height: 6px;
+  margin: 1px auto 0;
+  background: linear-gradient(to bottom, #bfdbfe, #8b5cf6);
+  border-radius: 1px;
+  opacity: 0.5;
+}
+
+@keyframes grid-row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes grid-cell-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-grid-row-enter {
+  animation: grid-row-enter 0.35s ease-out both;
+}
+
+.animate-grid-cell-enter {
+  animation: grid-cell-enter 0.3s ease-out both;
+}
+
+.visualizer-step-active {
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.35);
+}
+
+.msb-lsb-arrow {
+  opacity: 0.7;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Accordion utilities */
+.accordion-content {
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+}
+.accordion-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+.accordion-content.expanded {
+  max-height: 500px;
+  opacity: 1;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
