@@ -79,7 +79,7 @@ export function NumberSystemsSimulator({ onBackToHome }: NumberSystemsSimulatorP
             Back to Converter
           </Button>
         </nav>
-        <div className="light min-h-screen" style={{ backgroundColor: '#fbfcff' }}>
+        <div className="division-mode light min-h-screen">
           <DecimalToBinaryVisualizer decimalValue={decimalValue} onBack={() => setShowDecimalToBinaryVisualizer(false)} />
         </div>
       </div>

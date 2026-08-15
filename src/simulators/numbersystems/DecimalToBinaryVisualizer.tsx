@@ -72,16 +72,222 @@ export function DecimalToBinaryVisualizer({ decimalValue }: DecimalToBinaryVisua
   const displayedBinary = phase === 'complete' ? finalResult : assembledBinary || '_'.repeat(finalResult.length)
   const stepNumber = phase === 'complete' ? 5 : phase === 'reading' ? 4 : currentStep === 0 ? 1 : 2
 
-  return <main className="division-visualizer">
-    <header className="dv-header">
-      <div className="dv-brand"><span className="dv-brand-icon">÷</span><div><strong>Decimal → Binary</strong><small>Repeated Division Method</small></div></div>
-      <div className="dv-steps">{['Divide', 'Remainder', 'Continue', 'Read Bottom → Top', 'Result'].map((label, i) => <div className={`dv-step ${i + 1 <= stepNumber ? 'is-active' : ''}`} key={label}><span>{i + 1}</span><b>{label}</b></div>)}</div>
-      <div className="dv-legend"><span>● 1 = Binary 1</span><span>● 0 = Binary 0</span></div>
-    </header>
-    <section className="dv-heading"><p>Decimal Number</p><h1>{decimalValue}<sup>10</sup></h1><div className="dv-callout">ⓘ <span>We repeatedly divide the decimal number by 2 and record the remainders.</span></div></section>
-    <div className="dv-grid">
-      <section className="dv-workspace"><div className="dv-section-title"><span>÷</span><h2>Division Process</h2></div><DivisionTable steps={steps} currentStep={currentStep} selectedStep={selectedStep} onSelectStep={(i) => { setSelectedStep(i); setCurrentStep(i) }} targetBase={2} decimalValue={decimalValue} /><div className="dv-result-strip"><div><b>Remainders (Top to Bottom)</b><div className="dv-bits">{steps.map((s, i) => <span className={s.remainder ? 'one' : 'zero'} key={i}>{s.remainder}</span>)}</div></div><div className="dv-read-cue">→ Read Bottom to Top →</div><div><b>Binary Number</b><div className="dv-bits">{displayedBinary.split('').map((bit, i) => <span key={i}>{bit}</span>)}</div></div></div><div className="dv-completion"><div className="dv-complete-note">Conversion<br /><strong>Complete!</strong></div><div className="dv-equation">{decimalValue}<sup>10</sup> = {finalResult}<sub>2</sub></div><div className="dv-tip">Lightbulb<br /><strong>Read remainders from bottom to top.</strong></div></div></section>
-      <aside className="dv-guide"><button className="dv-guide-head" onClick={() => setShowGuide((v) => !v)}><span>▣ &nbsp; Learning Guide</span><b>{showGuide ? '⌃' : '⌄'}</b></button>{showGuide && <div className="dv-guide-body"><h3>How it works?</h3><p><b>÷ Divide:</b> Divide the decimal number by 2.</p><p><b>▣ Remainder:</b> Record the remainder (0 or 1).</p><p><b>→ Continue:</b> Use the quotient as the next number.</p><p><b>↻ Repeat:</b> Continue until the quotient becomes 0.</p><p><b>↑ Read:</b> Read the remainders from bottom to top.</p><div className="dv-key-idea"><b>Key Idea</b><p>Each remainder is a binary digit. Read them in reverse order to get the binary number.</p></div></div>}<div className="dv-guide-row">? &nbsp; Why Read Bottom to Top? <b>›</b></div><div className="dv-guide-row">ϟ &nbsp; Quick Help <b>›</b></div><div className="dv-current"><b>Current Step</b><div className="dv-current-flow"><span>Dividend<br /><strong>{steps[currentStep]?.dividend ?? decimalValue}</strong></span> → <span>÷ 2</span> → <span>Quotient<br /><strong>{steps[currentStep]?.quotient ?? 0}</strong></span> → <span>Remainder<br /><strong>{steps[currentStep]?.remainder ?? 0}</strong></span></div></div></aside>
+  if (!divisionResult.success) {
+    return (
+      <Card title="Error">
+        <div className="p-4 text-center" style={{ color: 'var(--error-text)' }}>
+          {divisionResult.error || 'Failed to generate division steps'}
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="division-visualizer space-y-6">
+      {/* Header with Decimal and Binary displays */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Decimal Input Display */}
+        <Card title="DECIMAL">
+          <div className="text-center">
+            <div className="text-4xl font-mono font-bold mb-2" style={{ color: 'var(--accent-primary)' }}>
+              ({decimalValue})₁₀
+            </div>
+            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Input value
+            </div>
+          </div>
+        </Card>
+
+        {/* Conversion Arrow */}
+        <div className="flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-4xl mb-2">↓</div>
+            <div className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+              Repeated Division by 2
+            </div>
+          </div>
+        </div>
+
+        {/* Binary Result Display */}
+        <Card title="BINARY">
+          <div className="text-center">
+            <div className="text-4xl font-mono font-bold mb-2" style={{ color: 'var(--success-text)' }}>
+              ({formatBinaryDisplay()})₂
+            </div>
+            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {phase === 'complete' ? 'Final result' : 'Building...'}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Animation Controls */}
+      <Card title="Controls">
+        <ConversionControls
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlay}
+          onNext={nextStep}
+          onPrevious={previousStep}
+          onReset={resetAnimation}
+          speed={speed}
+          onSpeedChange={setSpeed}
+          currentStep={currentStep}
+          totalSteps={steps.length}
+          phase={phase}
+        />
+        <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
+          <button
+            onClick={() => setShowExplanation(!showExplanation)}
+            className="px-4 py-2 rounded-lg font-medium transition-colors"
+            style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+            aria-label={showExplanation ? 'Hide explanation' : 'Show explanation'}
+          >
+            {showExplanation ? 'Hide Explanation' : 'Show Explanation'}
+          </button>
+        </div>
+      </Card>
+
+      {/* Main Division Table */}
+      <DivisionTable
+        steps={steps}
+        currentStep={currentStep}
+        selectedStep={selectedStep}
+        onSelectStep={handleStepSelect}
+        targetBase={2}
+        decimalValue={decimalValue}
+      />
+
+      {/* Step Explanation Panel */}
+      {showExplanation && (
+        <Card title="Explanation">
+          <div className="p-4">
+            <p className="text-base leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+              {getCurrentExplanation()}
+            </p>
+          </div>
+        </Card>
+      )}
+
+      {/* Remainder Reading Animation */}
+      {showReadingAnimation && phase !== 'division' && (
+        <Card title="Reading Remainders Bottom to Top">
+          <div className="space-y-4">
+            {/* Remainder Column */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                REMAINDERS (read from bottom)
+              </div>
+              <div className="flex flex-col-reverse gap-2">
+                {getRemaindersForDisplay().map((remainder, index) => (
+                  <RemainderIndicator
+                    key={index}
+                    remainder={remainder}
+                    targetBase={2}
+                    isCurrent={false}
+                    isCompleted={true}
+                    animate={false}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Animated Arrow */}
+            <div className="flex justify-center">
+              <div className="flex flex-col items-center gap-2">
+                <div className="text-4xl animate-bounce">⬆️</div>
+                <div className="text-sm font-medium" style={{ color: 'var(--accent-primary)' }}>
+                  Read this direction
+                </div>
+              </div>
+            </div>
+
+            {/* Assembled Binary */}
+            {assembledBinary && (
+              <div className="text-center p-4 rounded-lg" style={{ backgroundColor: 'var(--success-bg)' }}>
+                <div className="text-sm mb-2" style={{ color: 'var(--success-text)' }}>
+                  Building binary number:
+                </div>
+                <div className="text-3xl font-mono font-bold" style={{ color: 'var(--success-text)' }}>
+                  {assembledBinary}
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* Educational Callout */}
+      {phase === 'complete' && (
+        <Card title="Why Read from Bottom to Top?">
+          <div className="p-6 space-y-4">
+            <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+              <p className="text-base leading-relaxed mb-4" style={{ color: 'var(--text-primary)' }}>
+                <strong>Each division produces the next binary digit starting from the least significant bit (LSB).</strong>
+              </p>
+              <p className="text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                The first remainder we get is the least significant bit (rightmost digit). Each subsequent division
+                produces the next more significant bit. Therefore, to get the correct binary number, we must read
+                the remainders in reverse order - from bottom to top.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  First remainder (top of table)
+                </div>
+                <div className="text-2xl font-mono font-bold" style={{ color: 'var(--accent-primary)' }}>
+                  LSB → Rightmost digit
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                  Last remainder (bottom of table)
+                </div>
+                <div className="text-2xl font-mono font-bold" style={{ color: 'var(--accent-primary)' }}>
+                  MSB → Leftmost digit
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center p-4 rounded-lg" style={{ backgroundColor: 'var(--success-bg)' }}>
+              <div className="text-lg font-bold mb-2" style={{ color: 'var(--success-text)' }}>
+                Final Result
+              </div>
+              <div className="text-3xl font-mono font-bold" style={{ color: 'var(--success-text)' }}>
+                ({decimalValue})₁₀ = ({finalResult})₂
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Keyboard Shortcuts Help */}
+      <Card title="Keyboard Shortcuts">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 text-sm">
+          <div>
+            <kbd className="px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-secondary)' }}>Space</kbd>
+            <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>Next step</span>
+          </div>
+          <div>
+            <kbd className="px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-secondary)' }}>→</kbd>
+            <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>Next step</span>
+          </div>
+          <div>
+            <kbd className="px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-secondary)' }}>←</kbd>
+            <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>Previous step</span>
+          </div>
+          <div>
+            <kbd className="px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-secondary)' }}>Enter</kbd>
+            <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>Play/Pause</span>
+          </div>
+          <div>
+            <kbd className="px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-secondary)' }}>Escape</kbd>
+            <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>Restart</span>
+          </div>
+        </div>
+      </Card>
     </div>
     <ConversionControls isPlaying={isPlaying} onTogglePlay={() => setIsPlaying((v) => !v)} onNext={next} onPrevious={previous} onReset={reset} speed={speed} onSpeedChange={setSpeed} currentStep={currentStep} totalSteps={steps.length} phase={phase} />
   </main>
