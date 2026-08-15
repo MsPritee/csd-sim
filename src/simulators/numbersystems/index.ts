@@ -1,0 +1,31 @@
+/**
+ * Number Systems Simulator - Barrel Exports
+ * Presentation layer components for number systems education
+ */
+
+export { NumberSystemSelector } from './NumberSystemSelector'
+export { ConversionMatrix } from './ConversionMatrix'
+export { AdvancedVisualization } from './AdvancedVisualization'
+export { NumberSystemsSimulator } from './NumberSystemsSimulator'
+export { DivisionStepsVisualizer } from './DivisionStepsVisualizer'
+export { PositionValueVisualizer } from './PositionValueVisualizer'
+export { DecimalToBinaryVisualizer } from './DecimalToBinaryVisualizer'
+export { BinaryToDecimalVisualizer } from './BinaryToDecimalVisualizer'
+export { ConversionGridTable } from './ConversionGridTable'
+export { VisualizerHeader } from './VisualizerHeader'
+export { DivisionTable } from './DivisionTable'
+export { DivisionRow } from './DivisionRow'
+export { RemainderIndicator } from './RemainderIndicator'
+export { ConversionControls } from './ConversionControls'
+export { BinaryDigitRow } from './BinaryDigitRow'
+export { PowerOfTwoRow } from './PowerOfTwoRow'
+export { DecimalWeightRow } from './DecimalWeightRow'
+export { MultiplicationRow } from './MultiplicationRow'
+export { ContributionRow } from './ContributionRow'
+export { RunningTotalPanel } from './RunningTotalPanel'
+export { ExplanationPanel } from './ExplanationPanel'
+export { ResponsiveDigitCell } from './ResponsiveDigitCell'
+export { CollapsibleSidebar } from './CollapsibleSidebar'
+export { FlowArrowIcon } from './FlowArrowIcon'
+export { AnimatedPhaseTransition } from './AnimatedPhaseTransition'
+export { CelebrationEffect } from './CelebrationEffect'
