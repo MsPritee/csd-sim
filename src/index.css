@@ -1345,7 +1345,7 @@
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: var(--spacing-1.5);
+  padding: var(--spacing-1-5);
 }
 
 /* Active state indicators */
@@ -1582,7 +1582,7 @@
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: var(--spacing-1.5);
+  padding: var(--spacing-1-5);
 }
 
 /* Active state indicators */
@@ -1774,7 +1774,7 @@
   
   /* Semantic spacing hierarchy */
   --spacing-tight: var(--spacing-1);      /* Tight grouping: 4px/6px/8px */
-  --spacing-compact: var(--spacing-1.5); /* Compact: 6px/9px/12px */
+  --spacing-compact: var(--spacing-1-5); /* Compact: 6px/9px/12px */
   --spacing-normal: var(--spacing-2);    /* Normal: 8px/12px/16px */
   --spacing-relaxed: var(--spacing-3);   /* Relaxed: 12px/18px/24px */
 }
@@ -1818,12 +1818,12 @@
     
     /* Spacing scale based on 4px base */
     --spacing-0: 0;
-    --spacing-0.25: 0.0625rem; /* 1px */
-    --spacing-0.75: 0.1875rem; /* 3px */
+    --spacing-0-25: 0.0625rem; /* 1px */
+    --spacing-0-75: 0.1875rem; /* 3px */
     --spacing-1: 0.25rem;   /* 4px */
-    --spacing-1.5: 0.375rem; /* 6px */
+    --spacing-1-5: 0.375rem; /* 6px */
     --spacing-2: 0.5rem;    /* 8px */
-    --spacing-2.5: 0.625rem; /* 10px */
+    --spacing-2-5: 0.625rem; /* 10px */
     --spacing-3: 0.75rem;   /* 12px */
     --spacing-4: 1rem;      /* 16px */
     --spacing-5: 1.25rem;   /* 20px */
@@ -1861,12 +1861,12 @@
     
     /* Spacing scale based on 6px base */
     --spacing-0: 0;
-    --spacing-0.25: 0.09375rem; /* 1.5px */
-    --spacing-0.75: 0.28125rem; /* 4.5px */
+    --spacing-0-25: 0.09375rem; /* 1.5px */
+    --spacing-0-75: 0.28125rem; /* 4.5px */
     --spacing-1: 0.375rem;  /* 6px */
-    --spacing-1.5: 0.5625rem; /* 9px */
+    --spacing-1-5: 0.5625rem; /* 9px */
     --spacing-2: 0.75rem;   /* 12px */
-    --spacing-2.5: 0.9375rem; /* 15px */
+    --spacing-2-5: 0.9375rem; /* 15px */
     --spacing-3: 1.125rem;  /* 18px */
     --spacing-4: 1.5rem;    /* 24px */
     --spacing-5: 1.875rem;  /* 30px */
@@ -1904,12 +1904,12 @@
     
     /* Spacing scale based on 8px base */
     --spacing-0: 0;
-    --spacing-0.25: 0.125rem; /* 2px */
-    --spacing-0.75: 0.375rem; /* 6px */
+    --spacing-0-25: 0.125rem; /* 2px */
+    --spacing-0-75: 0.375rem; /* 6px */
     --spacing-1: 0.5rem;    /* 8px */
-    --spacing-1.5: 0.75rem; /* 12px */
+    --spacing-1-5: 0.75rem; /* 12px */
     --spacing-2: 1rem;      /* 16px */
-    --spacing-2.5: 1.25rem; /* 20px */
+    --spacing-2-5: 1.25rem; /* 20px */
     --spacing-3: 1.5rem;    /* 24px */
     --spacing-4: 2rem;      /* 32px */
     --spacing-5: 2.5rem;    /* 40px */
@@ -2009,9 +2009,9 @@
 
 /* Phase 6 Spacing Scale Utilities - Using Responsive Variables */
 .p-0 { padding: var(--spacing-0); }
-.p-0.25 { padding: var(--spacing-0.25); }
+.p-0\.25 { padding: var(--spacing-0-25); }
 .p-1 { padding: var(--spacing-1); }
-.p-1.5 { padding: var(--spacing-1.5); }
+.p-1\.5 { padding: var(--spacing-1-5); }
 .p-2 { padding: var(--spacing-2); }
 .p-3 { padding: var(--spacing-3); }
 .p-4 { padding: var(--spacing-4); }
@@ -2022,10 +2022,10 @@
 .p-12 { padding: var(--spacing-12); }
 
 .px-0 { padding-left: var(--spacing-0); padding-right: var(--spacing-0); }
-.px-0.25 { padding-left: var(--spacing-0.25); padding-right: var(--spacing-0.25); }
+.px-0\.25 { padding-left: var(--spacing-0-25); padding-right: var(--spacing-0-25); }
 .px-1 { padding-left: var(--spacing-1); padding-right: var(--spacing-1); }
 .px-2 { padding-left: var(--spacing-2); padding-right: var(--spacing-2); }
-.px-2.5 { padding-left: var(--spacing-2.5); padding-right: var(--spacing-2.5); }
+.px-2\.5 { padding-left: var(--spacing-2-5); padding-right: var(--spacing-2-5); }
 .px-3 { padding-left: var(--spacing-3); padding-right: var(--spacing-3); }
 .px-4 { padding-left: var(--spacing-4); padding-right: var(--spacing-4); }
 .px-5 { padding-left: var(--spacing-5); padding-right: var(--spacing-5); }
@@ -2033,7 +2033,7 @@
 .px-8 { padding-left: var(--spacing-8); padding-right: var(--spacing-8); }
 
 .py-0 { padding-top: var(--spacing-0); padding-bottom: var(--spacing-0); }
-.py-0.25 { padding-top: var(--spacing-0.25); padding-bottom: var(--spacing-0.25); }
+.py-0\.25 { padding-top: var(--spacing-0-25); padding-bottom: var(--spacing-0-25); }
 .py-1 { padding-top: var(--spacing-1); padding-bottom: var(--spacing-1); }
 .py-2 { padding-top: var(--spacing-2); padding-bottom: var(--spacing-2); }
 .py-3 { padding-top: var(--spacing-3); padding-bottom: var(--spacing-3); }
@@ -2068,7 +2068,7 @@
 .my-8 { margin-top: var(--spacing-8); margin-bottom: var(--spacing-8); }
 
 .mt-0 { margin-top: var(--spacing-0); }
-.mt-0.25 { margin-top: var(--spacing-0.25); }
+.mt-0\.25 { margin-top: var(--spacing-0-25); }
 .mt-1 { margin-top: var(--spacing-1); }
 .mt-2 { margin-top: var(--spacing-2); }
 .mt-3 { margin-top: var(--spacing-3); }
@@ -2079,7 +2079,7 @@
 
 .mb-0 { margin-bottom: var(--spacing-0); }
 .mb-1 { margin-bottom: var(--spacing-1); }
-.mb-1.5 { margin-bottom: var(--spacing-1.5); }
+.mb-1\.5 { margin-bottom: var(--spacing-1-5); }
 .mb-2 { margin-bottom: var(--spacing-2); }
 .mb-3 { margin-bottom: var(--spacing-3); }
 .mb-4 { margin-bottom: var(--spacing-4); }
@@ -2147,7 +2147,7 @@
 .heading-dense { line-height: 1.1; letter-spacing: -0.02em; }
 
 /* Spacing utilities for educational content */
-.space-y-0.75 > * + * { margin-top: var(--spacing-0.75); }
+.space-y-0\.75 > * + * { margin-top: var(--spacing-0-75); }
 
 /* Primary action button enhancement */
 .button-primary-enhanced {
@@ -2297,7 +2297,7 @@
 /* Phase 6 Gap Utilities - Using Responsive Variables */
 .gap-0 { gap: var(--spacing-0); }
 .gap-1 { gap: var(--spacing-1); }
-.gap-1.5 { gap: var(--spacing-1.5); }
+.gap-1\.5 { gap: var(--spacing-1-5); }
 .gap-2 { gap: var(--spacing-2); }
 .gap-3 { gap: var(--spacing-3); }
 .gap-4 { gap: var(--spacing-4); }
@@ -2390,7 +2390,7 @@
 /* Phase 6 Flex Gap Utilities - Using Responsive Variables */
 .gap-0 { gap: var(--spacing-0); }
 .gap-1 { gap: var(--spacing-1); }
-.gap-1.5 { gap: var(--spacing-1.5); }
+.gap-1\.5 { gap: var(--spacing-1-5); }
 .gap-2 { gap: var(--spacing-2); }
 .gap-3 { gap: var(--spacing-3); }
 .gap-4 { gap: var(--spacing-4); }
@@ -2398,7 +2398,7 @@
 .gap-8 { gap: var(--spacing-8); }
 
 /* Semantic Gap Classes */
-.gap-control-group { gap: var(--spacing-1.5); } /* Tight grouping for related controls */
+.gap-control-group { gap: var(--spacing-1-5); } /* Tight grouping for related controls */
 .gap-section { gap: var(--spacing-3); } /* Section-level spacing */
 .gap-panel { gap: var(--spacing-2); } /* Panel content spacing */
 

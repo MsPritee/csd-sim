@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [Fixed] - 2026-08-30
+- **Component**: CSS Build Pipeline - LightningCSS Production Breakage
+- **Description**: Fixed CSS styles breaking in Vercel production builds while working locally. Root cause: Vite 8's default CSS minifier (LightningCSS) strips CSS custom properties with decimal names (e.g., `--spacing-1.5`) and unescaped decimal class selectors (e.g., `.p-0.25`, `.gap-1.5`). Locally, `vite dev` doesn't minify CSS so the issue is invisible. On Vercel, `vite build` triggers LightningCSS which corrupts the CSS output.
+- **Reasoning**: LightningCSS considers decimal numbers in custom property names as invalid tokens and strips them entirely. It also strips class selectors containing dots (e.g., `.gap-1.5`) because the dot is ambiguous in CSS selector parsing. This caused 26 CSS rules to be silently removed from the production build, breaking spacing, padding, and gap utilities throughout the application.
+- **Impact**: All CSS styles now survive production minification correctly. Zero CSS warnings in build output. No functional changes to components or tests.
+- **Files Modified**:
+  - `src/index.css` - Renamed custom properties from decimal to hyphen format (`--spacing-1.5` → `--spacing-1-5`), escaped dots in class selectors (`.p-0.25` → `.p-0\.25`)
+  - `vite.config.ts` - Added `build.cssMinify: 'esbuild'` to use esbuild for CSS minification instead of LightningCSS
+
 ### [Refactored] - 2026-08-29
 - **Component**: K-Map Simulator - Stale Root File Cleanup
 - **Description**: Moved stale root-level `KMapSimulator.tsx` to trash. This file had broken `../../core/kmap` imports and was never imported by any file in the project. The live component at `src/simulators/kmap/KMapSimulator.tsx` is unaffected.
