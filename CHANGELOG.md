@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### [Fixed] - 2026-08-30
+- **Component**: Theme Background - Body and Root Element
+- **Description**: Added `background-color: var(--bg-primary)` to `html, body` in CSS and inline style on root wrapper div in `main.tsx`.
+- **Reasoning**: The `<body>` and root `<div id="root">` had no background color, causing white flash on load and white bleed in dark mode. Browser default is white, so any gap between body and styled content showed through.
+- **Impact**: Entire viewport now respects theme from first paint. No white flash on page load or theme toggle. Both dark and light themes render correctly across the full viewport.
+- **Files Modified**:
+  - `src/index.css` - Added `html, body` rule with `background-color: var(--bg-primary)`
+  - `src/main.tsx` - Added `style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}` to root div
+
+### [Fixed] - 2026-08-30
 - **Component**: CSS Build Pipeline - LightningCSS Production Breakage
 - **Description**: Fixed CSS styles breaking in Vercel production builds while working locally. Root cause: Vite 8's default CSS minifier (LightningCSS) strips CSS custom properties with decimal names (e.g., `--spacing-1.5`) and unescaped decimal class selectors (e.g., `.p-0.25`, `.gap-1.5`). Locally, `vite dev` doesn't minify CSS so the issue is invisible. On Vercel, `vite build` triggers LightningCSS which corrupts the CSS output.
 - **Reasoning**: LightningCSS considers decimal numbers in custom property names as invalid tokens and strips them entirely. It also strips unescaped class selectors containing dots because the dot is ambiguous in CSS selector parsing. This caused 26 CSS rules to be silently removed from the production build, breaking spacing, padding, and gap utilities throughout the application.

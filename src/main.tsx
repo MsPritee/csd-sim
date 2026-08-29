@@ -184,7 +184,7 @@ function MainApp() {
   ]
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <BrandHeader currentView={currentView} onViewChange={setCurrentView} />
       <div className="flex-1 pb-16 md:pb-0 overflow-auto">
         <App currentView={currentView} setCurrentView={setCurrentView} />
