@@ -84,9 +84,24 @@ function sumText(literals: readonly { name: string; negated: boolean }[]): strin
 }
 
 /**
- * Greedy prime-implicant cover. Only groups containing at least one
- * `required` (real, non-dont-care) cell are candidates; ties favour larger
- * groups.
+ * Exact minimum prime-implicant cover for small K-maps.
+ *
+ * Algorithm (Quine–McCluskey inspired):
+ *  1. Enumerate all valid rectangular groups (power-of-2 dimensions, wrap-aware)
+ *     that cover at least one required cell and consist entirely of eligible cells.
+ *  2. Reduce to prime implicants: groups that are not properly contained in any
+ *     other valid group.
+ *  3. Identify essential prime implicants: PIs that are the sole cover for at
+ *     least one required cell.
+ *  4. For remaining uncovered required cells, brute-force all subsets of the
+ *     remaining (non-essential) PIs to find the minimum-cost cover.
+ *
+ * Cost metric (in priority order):
+ *  - Fewer product terms (groups)
+ *  - Fewer total literals (larger groups eliminate more variables)
+ *
+ * For K-maps up to 5 variables (32 cells), the number of PIs is small enough
+ * that brute-force enumeration is instantaneous.
  */
 export function minimizeCover(
   kmap: KMapModel,
@@ -94,32 +109,116 @@ export function minimizeCover(
   required: ReadonlySet<number>,
 ): CellGroup[] {
   if (required.size === 0) return []
+
+  const numVars = kmap.layout.variables.length
+
+  // Step 1: all valid rectangular groups covering at least one required cell.
   const candidates = enumerateRectangles(kmap, eligible).filter((g) =>
     g.some((c) => required.has(c)),
   )
 
-  const covered = new Set<number>()
-  const chosen: CellGroup[] = []
-  let remaining = [...required].filter((c) => !covered.has(c))
+  // Step 2: extract prime implicants (not properly contained in another candidate).
+  const primes = candidates.filter(
+    (g) => !candidates.some((other) => other !== g && g.every((c) => other.includes(c))),
+  )
 
-  while (remaining.length > 0) {
-    let best: CellGroup | null = null
-    let bestScore = -1
-    for (const group of candidates) {
-      const fresh = group.filter((c) => !covered.has(c)).length
-      if (fresh === 0) continue
-      const score = fresh * 100_000 + (8 - group.length)
-      if (score > bestScore) {
-        bestScore = score
-        best = group
+  // Step 3: find essential prime implicants.
+  const essential: CellGroup[] = []
+  const covered = new Set<number>()
+  for (const cell of required) {
+    if (covered.has(cell)) continue
+    const coveringPrimes = primes.filter((p) => p.includes(cell))
+    if (coveringPrimes.length === 1) {
+      essential.push(coveringPrimes[0]!)
+      for (const c of coveringPrimes[0]!) covered.add(c)
+    }
+  }
+
+  // Step 4: brute-force minimum cover for remaining uncovered required cells.
+  const remaining = [...required].filter((c) => !covered.has(c))
+  if (remaining.length === 0) return essential
+
+  const remainingSet = new Set(remaining)
+  const nonEssential = primes.filter((p) => !essential.includes(p))
+  const additional = bruteForceMinCover(nonEssential, remainingSet, numVars)
+
+  return [...essential, ...additional]
+}
+
+/**
+ * Brute-force search over all subsets of candidates to find the minimum-cost
+ * cover of `remaining` cells. Cost = (terms × multiplier) + total literals.
+ */
+function bruteForceMinCover(
+  candidates: CellGroup[],
+  remaining: ReadonlySet<number>,
+  numVars: number,
+): CellGroup[] {
+  if (remaining.size === 0) return []
+
+  // Pre-filter: only candidates that cover at least one remaining cell.
+  const relevant = candidates.filter((g) => g.some((c) => remaining.has(c)))
+  if (relevant.length === 0) return []
+
+  // Sort by group size descending so smaller subsets are explored first for
+  // early termination (subset size 1, 2, 3, …).
+  relevant.sort((a, b) => b.length - a.length)
+
+  let best: CellGroup[] | null = null
+  let bestCost = Infinity
+
+  const n = relevant.length
+  // Try subsets in increasing cardinality for early termination.
+  for (let size = 1; size <= n; size++) {
+    for (const subset of combinations(relevant, size)) {
+      const subsetCovered = new Set<number>()
+      for (const g of subset) for (const c of g) subsetCovered.add(c)
+      if (![...remaining].every((c) => subsetCovered.has(c))) continue
+
+      const cost = coverCost(subset, numVars)
+      if (cost < bestCost) {
+        bestCost = cost
+        best = Array.from(subset) as CellGroup[]
       }
     }
-    if (!best) break
-    chosen.push(best)
-    for (const c of best) covered.add(c)
-    remaining = [...required].filter((c) => !covered.has(c))
+    // If we found a valid cover of this size, no need to try larger sizes
+    // (more terms is always worse).
+    if (best !== null) break
   }
-  return chosen
+
+  return best ?? []
+}
+
+/**
+ * Cost of a cover: primary = number of terms, secondary = total literals.
+ * Uses a multiplier of 1000 so fewer terms always wins.
+ */
+function coverCost(groups: readonly CellGroup[], numVars: number): number {
+  let totalLiterals = 0
+  for (const g of groups) {
+    totalLiterals += literalsForGroup(g.length, numVars)
+  }
+  return groups.length * 1000 + totalLiterals
+}
+
+/**
+ * Number of literals in the product term for a valid rectangular group.
+ * A group of size 2^j eliminates j variables → term has (numVars − j) literals.
+ */
+function literalsForGroup(groupSize: number, numVars: number): number {
+  if (groupSize <= 0) return numVars
+  return numVars - Math.log2(groupSize)
+}
+
+/** Yield all k-element subsets of arr (combinations). */
+function* combinations<T>(arr: readonly T[], k: number): Generator<readonly T[]> {
+  if (k === 0) { yield []; return }
+  if (k > arr.length) return
+  for (let i = 0; i <= arr.length - k; i++) {
+    for (const rest of combinations(arr.slice(i + 1), k - 1)) {
+      yield [arr[i]!, ...rest]
+    }
+  }
 }
 
 /** Builds SOP and POS simplified forms from a K-map. */

@@ -4,27 +4,24 @@ import type { KMapSolution, WalkthroughStep } from '../../../application/kmap'
 interface SolutionWalkthroughProps {
   solution: KMapSolution
   /** Called whenever the active step changes so the K-map grid can sync. */
-  onHighlightChange: (highlight: Map<number, number>) => void
+  onHighlightChange: (groups: { minterms: readonly number[]; colorIndex: number }[]) => void
 }
 
-function highlightFromStep(step: WalkthroughStep): Map<number, number> {
-  const map = new Map<number, number>()
+function highlightFromStep(step: WalkthroughStep): { minterms: readonly number[]; colorIndex: number }[] {
   switch (step.viz.type) {
     case 'targets':
     case 'group':
     case 'variable-analysis':
     case 'eliminated':
-      step.viz.cells.forEach((m, i) => map.set(m, i % 5))
-      break
+      return [{ minterms: step.viz.cells, colorIndex: 0 }]
     case 'candidate-groups':
-      step.viz.groups.forEach((group, gi) => {
-        group.forEach((m) => map.set(m, gi % 5))
-      })
-      break
+      return step.viz.groups.map((group, gi) => ({
+        minterms: group,
+        colorIndex: gi % 5,
+      }))
     case 'final':
-      break
+      return []
   }
-  return map
 }
 
 export default function SolutionWalkthrough({
@@ -69,27 +66,27 @@ export default function SolutionWalkthrough({
   )
 
   return (
-    <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
+    <div className="rounded-lg p-4 border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-violet-300">Solution Walkthrough</h3>
-        <span className="text-xs text-slate-400">
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--accent-primary)' }}>Solution Walkthrough</h3>
+        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
           Step {index + 1} of {total} · {solution.mode.toUpperCase()}
         </span>
       </div>
 
       {/* Progress bar */}
-      <div className="h-1.5 bg-slate-800 rounded-full mb-4 overflow-hidden">
+      <div className="h-1.5 rounded-full mb-4 overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
         <div
-          className="h-full bg-violet-500 transition-all"
-          style={{ width: `${((index + 1) / total) * 100}%` }}
+          className="h-full transition-all"
+          style={{ width: `${((index + 1) / total) * 100}%`, backgroundColor: 'var(--accent-primary)' }}
         />
       </div>
 
       {/* Current step */}
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <h4 className="font-medium text-white">{step.title}</h4>
-          <span className="text-xs text-slate-500 shrink-0">
+          <h4 className="font-medium" style={{ color: 'var(--text-primary)' }}>{step.title}</h4>
+          <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
             {summary.groups} group{summary.groups === 1 ? '' : 's'} · {summary.terms} term
             {summary.terms === 1 ? '' : 's'}
           </span>
@@ -97,8 +94,8 @@ export default function SolutionWalkthrough({
 
         <ul className="space-y-1">
           {step.description.map((line, i) => (
-            <li key={i} className="text-sm text-slate-300 flex gap-2">
-              <span className="text-violet-400 shrink-0">•</span>
+            <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--text-primary)' }}>
+              <span className="shrink-0" style={{ color: 'var(--accent-secondary)' }}>•</span>
               <span>{line}</span>
             </li>
           ))}
@@ -106,9 +103,9 @@ export default function SolutionWalkthrough({
 
         {/* Variable comparison table */}
         {step.variableAnalysis && step.variableAnalysis.rows.length > 0 && (
-          <table className="w-full text-xs text-slate-300 border border-slate-700 rounded overflow-hidden">
+          <table className="w-full text-xs rounded overflow-hidden border" style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}>
             <thead>
-              <tr className="bg-slate-800 text-left">
+              <tr className="text-left" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                 <th className="px-2 py-1 font-medium">Cell</th>
                 {step.variableAnalysis.variables.map((v, i) => (
                   <th key={i} className="px-2 py-1 font-medium text-center">
@@ -120,7 +117,7 @@ export default function SolutionWalkthrough({
             </thead>
             <tbody>
               {step.variableAnalysis.rows.map((row) => (
-                <tr key={row.minterm} className="border-t border-slate-800">
+                <tr key={row.minterm} className="border-t" style={{ borderColor: 'var(--bg-tertiary)' }}>
                   <td className="px-2 py-1 font-mono">m{row.minterm}</td>
                   {row.bits.map((b, i) => {
                     const v = step.variableAnalysis!.variables[i]!
@@ -128,9 +125,8 @@ export default function SolutionWalkthrough({
                     return (
                       <td
                         key={i}
-                        className={`px-2 py-1 text-center font-mono ${
-                          isChanged ? 'text-red-400 line-through decoration-red-400' : 'text-green-400'
-                        }`}
+                        className={`px-2 py-1 text-center font-mono ${isChanged ? 'line-through decoration-red-400' : ''}`}
+                        style={{ color: isChanged ? 'var(--error-text)' : 'var(--success-text)', textDecorationColor: isChanged ? 'var(--error-text)' : undefined }}
                       >
                         {b}
                       </td>
@@ -144,18 +140,18 @@ export default function SolutionWalkthrough({
 
         {/* Derived term */}
         {step.derivedTerm !== undefined && (
-          <div className="bg-slate-800 rounded p-3 text-center">
-            <span className="text-xs text-slate-400 uppercase tracking-wide block mb-1">
+          <div className="rounded p-3 text-center" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+            <span className="text-xs uppercase tracking-wide block mb-1" style={{ color: 'var(--text-secondary)' }}>
               {step.type === 'final' || step.type === 'combine'
                 ? 'Expression'
                 : 'Simplified term'}
             </span>
-            <span className="font-mono text-lg text-violet-300">{step.derivedTerm}</span>
+            <span className="font-mono text-lg" style={{ color: 'var(--accent-primary)' }}>{step.derivedTerm}</span>
           </div>
         )}
 
         {step.hint && (
-          <p className="text-xs text-slate-500 italic">💡 {step.hint}</p>
+          <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>💡 {step.hint}</p>
         )}
       </div>
 
@@ -164,26 +160,30 @@ export default function SolutionWalkthrough({
         <button
           onClick={prev}
           disabled={index === 0}
-          className="px-3 py-1 rounded text-sm bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-3 py-1 rounded text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
         >
           Previous
         </button>
         <button
           onClick={next}
           disabled={index >= mask}
-          className="px-3 py-1 rounded text-sm bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-3 py-1 rounded text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
         >
           Next
         </button>
         <button
           onClick={togglePlay}
-          className="px-3 py-1 rounded text-sm bg-violet-600 text-white hover:bg-violet-500"
+          className="px-3 py-1 rounded text-sm"
+          style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
         >
           {playing ? 'Pause' : 'Play'}
         </button>
         <button
           onClick={replay}
-          className="px-3 py-1 rounded text-sm bg-slate-800 text-slate-200 hover:bg-slate-700"
+          className="px-3 py-1 rounded text-sm"
+          style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
         >
           Replay
         </button>

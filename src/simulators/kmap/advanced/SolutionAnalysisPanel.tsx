@@ -3,7 +3,7 @@ import { historyComment, type HistoryEntry } from '../../../core/kmap/solutions'
 import { canonicalVsMinimalExplanation } from '../../../education/advanced'
 import ExpandableSection from '../components/ExpandableSection'
 import type { Analysis } from './analysis'
-import { INPUT_CLS } from './inputClass'
+import { INPUT_CLS, INPUT_STYLE } from './inputClass'
 import CoverageTable from './CoverageTable'
 import NiceHeader from './NiceHeader'
 import Pills from './Pills'
@@ -32,29 +32,29 @@ export default function SolutionAnalysisPanel({
   eof,
 }: Props) {
   return (
-    <div className="border-t border-slate-700 pt-4">
+    <div className="border-t pt-4" style={{ borderColor: 'var(--border-color)' }}>
       <NiceHeader title="Solution analysis" hint="Derived live from the current K-map." />
       <div className="space-y-3">
         <ExpandableSection title="SOP / POS minimal solution + cost" defaultExpanded>
           <div className="grid sm:grid-cols-2 gap-3 text-sm">
-            <div className="rounded bg-slate-900 border border-slate-700 p-3">
-              <p className="text-violet-300 font-medium mb-1">SOP (Sum of Products)</p>
-              <code className="text-green-300">{analysis.simp.sop || '0'}</code>
-              <p className="text-slate-400 text-xs mt-1">{analysis.costSop.terms} term(s) · {analysis.costSop.literals} literal(s) · est. {analysis.costSop.estimatedGates} gates</p>
+            <div className="rounded p-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+              <p className="font-medium mb-1" style={{ color: 'var(--accent-secondary)' }}>SOP (Sum of Products)</p>
+              <code style={{ color: 'var(--success-text)' }}>{analysis.simp.sop || '0'}</code>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{analysis.costSop.terms} term(s) · {analysis.costSop.literals} literal(s) · est. {analysis.costSop.estimatedGates} gates</p>
             </div>
-            <div className="rounded bg-slate-900 border border-slate-700 p-3">
-              <p className="text-violet-300 font-medium mb-1">POS (Product of Sums)</p>
-              <code className="text-green-300">{analysis.simp.pos || '0'}</code>
-              <p className="text-slate-400 text-xs mt-1">{analysis.costPos.terms} term(s) · {analysis.costPos.literals} literal(s) · est. {analysis.costPos.estimatedGates} gates</p>
+            <div className="rounded p-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+              <p className="font-medium mb-1" style={{ color: 'var(--accent-secondary)' }}>POS (Product of Sums)</p>
+              <code style={{ color: 'var(--success-text)' }}>{analysis.simp.pos || '0'}</code>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{analysis.costPos.terms} term(s) · {analysis.costPos.literals} literal(s) · est. {analysis.costPos.estimatedGates} gates</p>
             </div>
           </div>
-          <p className="text-slate-500 text-xs mt-2">Gate count is a transparent literals + terms heuristic, not real hardware cost.</p>
+          <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Gate count is a transparent literals + terms heuristic, not real hardware cost.</p>
         </ExpandableSection>
 
         <ExpandableSection title="Prime implicants (implicant → prime → essential)">
           <RunningText lines={progression} />
-          <ul className="text-sm text-slate-300 space-y-1 mt-2">
-            {analysis.prime.length === 0 && <li className="text-slate-500">No ON-set cells to cover.</li>}
+          <ul className="text-sm space-y-1 mt-2" style={{ color: 'var(--text-primary)' }}>
+            {analysis.prime.length === 0 && <li style={{ color: 'var(--text-muted)' }}>No ON-set cells to cover.</li>}
             {analysis.prime.map((p) => <PrimeRow key={p.id} p={p} />)}
           </ul>
         </ExpandableSection>
@@ -67,36 +67,36 @@ export default function SolutionAnalysisPanel({
           <RunningText lines={canonicalVsMinimalExplanation()} />
           <div className="mt-2 grid sm:grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-slate-400 text-xs">Canonical SOP</p>
-              <code className="text-green-300">{analysis.canon.canonicalSop || '0'}</code>
-              <p className="text-slate-400 text-xs mt-1">Minimal SOP</p>
-              <code className="text-green-300">{analysis.canon.simplifiedSop || '0'}</code>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Canonical SOP</p>
+              <code style={{ color: 'var(--success-text)' }}>{analysis.canon.canonicalSop || '0'}</code>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Minimal SOP</p>
+              <code style={{ color: 'var(--success-text)' }}>{analysis.canon.simplifiedSop || '0'}</code>
             </div>
             <div>
-              <p className="text-slate-400 text-xs">Canonical POS</p>
-              <code className="text-green-300">{analysis.canon.canonicalPos || '0'}</code>
-              <p className="text-slate-400 text-xs mt-1">Minimal POS</p>
-              <code className="text-green-300">{analysis.canon.simplifiedPos || '0'}</code>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Canonical POS</p>
+              <code style={{ color: 'var(--success-text)' }}>{analysis.canon.canonicalPos || '0'}</code>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Minimal POS</p>
+              <code style={{ color: 'var(--success-text)' }}>{analysis.canon.simplifiedPos || '0'}</code>
             </div>
           </div>
         </ExpandableSection>
 
         <ExpandableSection title="Multiple valid solutions">
-          <p className="text-slate-300 text-sm mb-2">{analysis.comparison.verdict}</p>
+          <p className="text-sm mb-2" style={{ color: 'var(--text-primary)' }}>{analysis.comparison.verdict}</p>
           <div className="grid sm:grid-cols-2 gap-3 text-sm">
-            <div className="rounded bg-slate-900 border border-slate-700 p-2">
-              <p className="text-slate-500 text-xs">Minimal {analysis.modeEngine.toUpperCase()}</p>
-              <code className="text-green-300">A: {analysis.primary}</code>
-              <p className="text-slate-500 text-xs">{analysis.comparison.a.cost.literals} literals</p>
+            <div className="rounded p-2" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Minimal {analysis.modeEngine.toUpperCase()}</p>
+              <code style={{ color: 'var(--success-text)' }}>A: {analysis.primary}</code>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{analysis.comparison.a.cost.literals} literals</p>
             </div>
-            <div className="rounded bg-slate-900 border border-slate-700 p-2">
-              <p className="text-slate-500 text-xs">Complementary form ({analysis.modeEngine === 'sop' ? 'POS' : 'SOP'})</p>
-              <code className="text-green-300">B: {analysis.modeEngine === 'sop' ? analysis.simp.pos : analysis.simp.sop}</code>
-              <p className="text-slate-500 text-xs">{analysis.comparison.b.cost.literals} literals</p>
+            <div className="rounded p-2" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)' }}>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Complementary form ({analysis.modeEngine === 'sop' ? 'POS' : 'SOP'})</p>
+              <code style={{ color: 'var(--success-text)' }}>B: {analysis.modeEngine === 'sop' ? analysis.simp.pos : analysis.simp.sop}</code>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{analysis.comparison.b.cost.literals} literals</p>
             </div>
           </div>
           <div className="mt-3">
-            <label className="text-slate-300 text-sm block mb-1" htmlFor="student-expr">
+            <label className="text-sm block mb-1" style={{ color: 'var(--text-primary)' }} htmlFor="student-expr">
               Check your own expression (A vs B):
             </label>
             <input
@@ -105,6 +105,7 @@ export default function SolutionAnalysisPanel({
               onChange={(e) => onStudentExprChange(e.target.value)}
               placeholder={`e.g. ${analysis.primary}`}
               className={INPUT_CLS}
+              style={INPUT_STYLE}
               aria-label="Student expression"
             />
           </div>
@@ -112,9 +113,9 @@ export default function SolutionAnalysisPanel({
 
         <ExpandableSection title="Grouping strategy (your current selection)">
           {strategy.length === 0 ? (
-            <p className="text-slate-500 text-sm">Select cells on the K-map to analyze your grouping.</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Select cells on the K-map to analyze your grouping.</p>
           ) : (
-            <ul className="text-sm text-slate-300 space-y-1">
+            <ul className="text-sm space-y-1" style={{ color: 'var(--text-primary)' }}>
               {strategy.map((s, i) => <li key={i}>· {s}</li>)}
             </ul>
           )}
@@ -122,21 +123,21 @@ export default function SolutionAnalysisPanel({
 
         <ExpandableSection title="Session history (this page)">
           {history.length === 0 ? (
-            <p className="text-slate-500 text-sm">Define a function to start a history log.</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Define a function to start a history log.</p>
           ) : (
-            <ul className="text-sm text-slate-300 space-y-1">
+            <ul className="text-sm space-y-1" style={{ color: 'var(--text-primary)' }}>
               {history.map((h, i) => (
                 <li key={h.id}>
-                  <span className="text-slate-500">#{h.id}</span> <code className="text-green-300">{h.expression}</code> · {h.terms}t/{h.literals}l · {h.mode.toUpperCase()}
-                  {i > 0 && <span className="text-slate-400"> — {historyComment(history[i - 1]!, h)}</span>}
+                  <span style={{ color: 'var(--text-muted)' }}>#{h.id}</span> <code style={{ color: 'var(--success-text)' }}>{h.expression}</code> · {h.terms}t/{h.literals}l · {h.mode.toUpperCase()}
+                  {i > 0 && <span style={{ color: 'var(--text-secondary)' }}> — {historyComment(history[i - 1]!, h)}</span>}
                 </li>
               ))}
             </ul>
           )}
         </ExpandableSection>
 
-        <div className="rounded bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-300">
-          <p className="text-violet-300 font-medium mb-1">Current function (derived from the K-map)</p>
+        <div className="rounded px-3 py-2 text-sm" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
+          <p className="font-medium mb-1" style={{ color: 'var(--accent-secondary)' }}>Current function (derived from the K-map)</p>
           <p className="text-xs">
             ON (minterms): <Pills items={eof.minterms} /> · OFF (maxterms): <Pills items={eof.maxterms} /> · Don't-care: <Pills items={eof.dontCares} />
           </p>

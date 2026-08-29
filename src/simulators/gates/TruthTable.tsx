@@ -16,16 +16,16 @@ const LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 export default function TruthTable({ headerLabels, table, currentInputs }: TruthTableProps) {
   const currentKey = currentInputs.join('')
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm border-collapse" data-testid="truth-table">
+    <div className="overflow-x-auto -mx-1 sm:mx-0 px-1 sm:px-0">
+      <table className="w-full text-xs sm:text-sm border-collapse min-w-[200px]" data-testid="truth-table">
         <thead>
           <tr>
             {table[0]?.slice(0, -1).map((_, i) => (
-              <th key={i} className="px-3 py-1.5 text-left font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <th key={i} className="px-2 sm:px-3 py-1.5 text-left font-medium" style={{ color: 'var(--text-secondary)' }}>
                 {headerLabels[i] ?? LABELS[i] ?? '?'}
               </th>
             ))}
-            <th className="px-3 py-1.5 text-left font-medium" style={{ color: 'var(--accent-primary)' }}>
+            <th className="px-2 sm:px-3 py-1.5 text-left font-medium" style={{ color: 'var(--accent-primary)' }}>
               Y
             </th>
           </tr>
@@ -48,7 +48,7 @@ export default function TruthTable({ headerLabels, table, currentInputs }: Truth
                   <td
                     key={cellIndex}
                     data-testid={cellIndex === row.length - 1 ? `output-${key}` : undefined}
-                    className="px-3 py-1.5 tabular-nums"
+                    className="px-2 sm:px-3 py-1.5 tabular-nums"
                     style={{ color: cell === 1 ? 'var(--accent-primary)' : 'var(--text-secondary)' }}
                   >
                     {cell}

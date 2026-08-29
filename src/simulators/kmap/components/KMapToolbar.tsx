@@ -1,10 +1,14 @@
+import { useState, useEffect } from 'react'
 import type { CellValue } from '../../../core/kmap'
+import PrimaryToolbar from './PrimaryToolbar'
+import SecondaryToolbar from './SecondaryToolbar'
+import ButtonGroup from './ButtonGroup'
 
 interface KMapToolbarProps {
-  variableCount: 2 | 3 | 4
+  variableCount: 2 | 3 | 4 | 5
   currentValue: CellValue
   showMintermNumbers: boolean
-  onVariableCountChange: (count: 2 | 3 | 4) => void
+  onVariableCountChange: (count: 2 | 3 | 4 | 5) => void
   onCurrentValueChange: (value: CellValue) => void
   onToggleMintermNumbers: () => void
   onClear: () => void
@@ -19,86 +23,77 @@ export default function KMapToolbar({
   onToggleMintermNumbers,
   onClear,
 }: KMapToolbarProps) {
+  const [showSecondary, setShowSecondary] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   return (
-    <div className="rounded-lg p-6 mb-6 border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}>
-      <div className="flex flex-wrap gap-4 items-center">
-        <div>
-          <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Variables</label>
-          <select
-            value={variableCount}
-            onChange={(e) => onVariableCountChange(Number(e.target.value) as 2 | 3 | 4)}
-            className="rounded px-3 py-2 transition-colors"
-            style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-          >
-            <option value={2}>2 Variables (A, B)</option>
-            <option value={3}>3 Variables (A, B, C)</option>
-            <option value={4}>4 Variables (A, B, C, D)</option>
-          </select>
+    <div className="toolbar-primary kmap-toolbar rounded-lg p-1 sm:p-1.5 md:p-2 mb-1 sm:mb-1.5">
+      <div className="flex flex-wrap gap-control-group items-center justify-between">
+        <div className="flex-1 min-w-0 overflow-x-auto -mx-0.5 px-0.5 sm:mx-0 sm:px-0">
+          <PrimaryToolbar
+            variableCount={variableCount}
+            currentValue={currentValue}
+            onVariableCountChange={onVariableCountChange}
+            onCurrentValueChange={onCurrentValueChange}
+          />
         </div>
 
-        <div>
-          <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Cell Value</label>
-          <div className="flex gap-2">
-            {[0, 1, 'X'].map((val) => (
-              <button
-                key={val}
-                onClick={() => onCurrentValueChange(val as CellValue)}
-                className="px-3 py-2 rounded transition-colors"
-                style={{
-                  backgroundColor: currentValue === val ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
-                  color: currentValue === val ? '#ffffff' : 'var(--text-secondary)'
-                }}
-                onMouseEnter={(e) => {
-                  if (currentValue !== val) {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (currentValue !== val) {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-                  }
-                }}
-              >
-                {val === 'X' ? 'X' : val}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Display</label>
+        <ButtonGroup>
           <button
-            onClick={onToggleMintermNumbers}
-            className="px-3 py-2 rounded transition-colors"
+            onClick={() => setShowSecondary(!showSecondary)}
+            className="hidden sm:flex px-2 py-1 rounded text-xs transition-all touch-action-manipulation toolbar-control min-h-[40px]"
             style={{
-              backgroundColor: showMintermNumbers ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
-              color: showMintermNumbers ? '#ffffff' : 'var(--text-secondary)'
+              backgroundColor: showSecondary ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+              color: showSecondary ? '#ffffff' : 'var(--text-secondary)',
+              boxShadow: showSecondary ? 'var(--shadow-accent)' : 'var(--shadow-xs)'
+            }}
+            title="Toggle display options"
+          >
+            {showSecondary ? '− Options' : '+ Options'}
+          </button>
+
+          <button
+            onClick={onClear}
+            className="rounded transition-all touch-action-manipulation"
+            style={{ 
+              backgroundColor: 'var(--error-border, #dc2626)',
+              color: '#ffffff',
+              boxShadow: 'var(--shadow-error)',
+              padding: '6px 12px',
+              fontSize: '14px',
+              minWidth: '44px',
+              minHeight: '44px',
             }}
             onMouseEnter={(e) => {
-              if (!showMintermNumbers) {
-                e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-              }
+              e.currentTarget.style.backgroundColor = 'var(--error-text, #b91c1c)'
+              e.currentTarget.style.boxShadow = '0 6px 20px color-mix(in srgb, var(--error-border) 50%, transparent)'
             }}
             onMouseLeave={(e) => {
-              if (!showMintermNumbers) {
-                e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-              }
+              e.currentTarget.style.backgroundColor = 'var(--error-border, #dc2626)'
+              e.currentTarget.style.boxShadow = 'var(--shadow-error)'
             }}
+            title="Clear K-Map"
           >
-            {showMintermNumbers ? 'Hide Numbers' : 'Show Numbers'}
+            <span style={{ color: '#ffffff', display: 'inline' }}>Clear</span>
           </button>
-        </div>
-
-        <button
-          onClick={onClear}
-          className="px-4 py-2 rounded text-white ml-auto transition-colors"
-          style={{ backgroundColor: '#dc2626' }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-        >
-          Clear K-Map
-        </button>
+        </ButtonGroup>
       </div>
+
+      {(showSecondary || isMobile) && (
+        <div className="mt-1.5 pt-1.5 border-t control-group" style={{ borderColor: 'var(--border-color)' }}>
+          <SecondaryToolbar
+            showMintermNumbers={showMintermNumbers}
+            onToggleMintermNumbers={onToggleMintermNumbers}
+          />
+        </div>
+      )}
     </div>
   )
 }

@@ -21,16 +21,16 @@ export default function TruthTableMini({ spec, highlight, tone = 'green' }: Trut
   const rowCount = 2 ** variables.length
 
   return (
-    <div className="inline-block overflow-hidden rounded-lg border border-slate-700 bg-slate-800">
+    <div className="inline-block overflow-hidden rounded-lg border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}>
       <table className="text-sm">
         <thead>
-          <tr className="bg-slate-700/60 text-slate-300">
+          <tr style={{ backgroundColor: 'var(--border-light)', color: 'var(--text-primary)' }}>
             {variables.map((v) => (
               <th key={v} className="px-3 py-1.5 font-mono font-medium">
                 {v}
               </th>
             ))}
-            <th className="px-4 py-1.5 font-mono font-medium text-violet-300">F</th>
+            <th className="px-4 py-1.5 font-mono font-medium" style={{ color: 'var(--accent-primary)' }}>F</th>
           </tr>
         </thead>
         <tbody>
@@ -47,12 +47,12 @@ export default function TruthTableMini({ spec, highlight, tone = 'green' }: Trut
                 initial={active ? { opacity: 0.45 } : false}
                 animate={active ? { opacity: 1 } : false}
                 transition={{ duration: 0.4 }}
-                className={
+                style={
                   active
                     ? tone === 'green'
-                      ? 'bg-green-500/15 text-green-200'
-                      : 'bg-red-500/15 text-red-200'
-                    : 'text-slate-400'
+                      ? { backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }
+                      : { backgroundColor: 'var(--error-bg)', color: 'var(--error-text)' }
+                    : { color: 'var(--text-secondary)' }
                 }
               >
                 {bits.map((bit, i) => (
@@ -61,15 +61,17 @@ export default function TruthTableMini({ spec, highlight, tone = 'green' }: Trut
                   </td>
                 ))}
                 <td
-                  className={`px-4 py-1.5 text-center font-mono font-bold ${
-                    value === 1
-                      ? 'text-green-400'
-                      : value === 0
-                        ? 'text-red-400'
-                        : value === 'X'
-                          ? 'text-yellow-400'
-                          : 'text-slate-500'
-                  }`}
+                  className="px-4 py-1.5 text-center font-mono font-bold"
+                  style={{
+                    color:
+                      value === 1
+                        ? 'var(--success-text)'
+                        : value === 0
+                          ? 'var(--error-text)'
+                          : value === 'X'
+                            ? 'var(--warning-text)'
+                            : 'var(--text-muted)',
+                  }}
                 >
                   {value === null ? '–' : value}
                 </td>

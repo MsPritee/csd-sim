@@ -300,7 +300,7 @@ export function ConversionPractice({ onBackToHome, preferredSystem = 'decimal' }
         </Button>
       </nav>
       <div
-        className="min-h-screen p-6"
+        className="flex-1 p-6"
         style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
       >
         <div className="max-w-4xl mx-auto space-y-6">

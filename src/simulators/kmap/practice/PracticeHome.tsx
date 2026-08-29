@@ -36,6 +36,19 @@ const MODES: readonly ModeOption[] = [
   },
 ]
 
+function conceptColor(status: string): React.CSSProperties {
+  switch (status) {
+    case 'MASTERED':
+      return { backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', borderColor: 'var(--success-text)' }
+    case 'DEVELOPING':
+      return { backgroundColor: 'var(--success-bg)', color: 'var(--success-text)', borderColor: 'var(--success-text)' }
+    case 'LEARNING':
+      return { backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: 'var(--warning-text)' }
+    default:
+      return { backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)', borderColor: 'var(--border-color)' }
+  }
+}
+
 export default function PracticeHome() {
   const mastery = usePracticeStore((s) => s.conceptMastery)
   const startSession = usePracticeStore((s) => s.startSession)
@@ -46,45 +59,32 @@ export default function PracticeHome() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-2">
-      <h1 className="mt-2  text-3xl font-bold">K-Map Practice</h1>
-      {/* <p className="mt-3 max-w-2xl text-slate-300">
-        Work through problems by concept, get mistake-level feedback with the{' '}
-        <em>why</em>, revisit correct concepts, and adapt to the areas that need
-        the most work. Every answer is checked against the real simplification
-        engine — never by string matching.
-      </p> */}
+      <h1 className="mt-2 text-3xl font-bold">K-Map Practice</h1>
 
       {started && (
-        <section className="mt-8 rounded-lg border border-slate-700 bg-slate-900 p-5">
+        <section className="mt-8 rounded-lg border p-5" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold text-violet-300">Your progress</h2>
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--accent-primary)' }}>Your progress</h2>
             {next ? (
-              <span className="text-sm text-slate-400">
+              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Next concept to try:{' '}
-                <span className="font-medium text-violet-300">
+                <span className="font-medium" style={{ color: 'var(--accent-primary)' }}>
                   {CONCEPTS.find((c) => c.id === next)?.title}
                 </span>
               </span>
             ) : (
-              <span className="text-sm text-green-400">All concepts mastered!</span>
+              <span className="text-sm" style={{ color: 'var(--success-text)' }}>All concepts mastered!</span>
             )}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-5">
             {CONCEPTS.map((c) => {
               const st = mastery[c.id]
-              const color =
-                st.status === 'MASTERED'
-                  ? 'bg-green-900/40 text-green-300 border-green-700'
-                  : st.status === 'DEVELOPING'
-                    ? 'bg-emerald-900/40 text-emerald-300 border-emerald-700'
-                    : st.status === 'LEARNING'
-                      ? 'bg-amber-900/30 text-amber-300 border-amber-700'
-                      : 'bg-slate-800 text-slate-400 border-slate-700'
               return (
                 <div
                   key={c.id}
                   title={`${st.score} · ${st.attempts} attempt${st.attempts === 1 ? '' : 's'}`}
-                  className={`rounded border px-2 py-1.5 text-xs font-medium ${color}`}
+                  className="rounded border px-2 py-1.5 text-xs font-medium"
+                  style={conceptColor(st.status)}
                 >
                   {c.short}
                 </div>
@@ -95,29 +95,32 @@ export default function PracticeHome() {
       )}
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-slate-100">Choose a mode</h2>
+        <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Choose a mode</h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-3">
           {MODES.map((m) => (
             <button
               key={m.mode}
               onClick={() => startSession(m.mode, size)}
-              className={`rounded-lg border bg-slate-900 p-5 text-left transition-colors hover:border-violet-500 hover:bg-slate-800 ${
-                m.mode === 'guided' ? 'border-violet-500' : 'border-slate-700'
-              }`}
+              className="rounded-lg border p-5 text-left transition-colors"
+              style={{
+                borderColor: m.mode === 'guided' ? 'var(--accent-bg)' : 'var(--border-color)',
+                backgroundColor: 'var(--bg-secondary)',
+              }}
             >
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-violet-300">{m.title}</h3>
+                <h3 className="font-semibold" style={{ color: 'var(--accent-primary)' }}>{m.title}</h3>
                 <span
-                  className={`rounded px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                  className="rounded px-2 py-0.5 text-[10px] uppercase tracking-wide"
+                  style={
                     m.hint === 'no hints'
-                      ? 'bg-slate-800 text-slate-400'
-                      : 'bg-violet-900/40 text-violet-300'
-                  }`}
+                      ? { backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }
+                      : { backgroundColor: 'var(--accent-bg)', color: 'var(--accent-primary)' }
+                  }
                 >
                   {m.hint}
                 </span>
               </div>
-              <p className="mt-2 text-sm text-slate-400">{m.blurb}</p>
+              <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{m.blurb}</p>
             </button>
           ))}
         </div>
@@ -125,17 +128,18 @@ export default function PracticeHome() {
 
       <section className="mt-6">
         <fieldset>
-          <legend className="mb-1 text-sm text-slate-400">Problems per session</legend>
+          <legend className="mb-1 text-sm" style={{ color: 'var(--text-secondary)' }}>Problems per session</legend>
           <div className="flex gap-2">
             {([5, 10] as const).map((n) => (
               <button
                 key={n}
                 onClick={() => setSize(n)}
-                className={`rounded border px-4 py-2 text-sm font-medium ${
+                className="rounded border px-4 py-2 text-sm font-medium"
+                style={
                   size === n
-                    ? 'border-violet-500 bg-violet-900/40 text-violet-200'
-                    : 'border-slate-700 bg-slate-900 text-slate-300'
-                }`}
+                    ? { borderColor: 'var(--accent-bg)', backgroundColor: 'var(--accent-bg)', color: 'var(--accent-primary)' }
+                    : { borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }
+                }
               >
                 {n}
               </button>

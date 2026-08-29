@@ -32,6 +32,18 @@ export function BitGroupingVisualizer({
   const [hoveredGroup, setHoveredGroup] = useState<number | null>(null)
   const [showAnimation, setShowAnimation] = useState(false)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
+  
+  // Responsive detection
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Validate binary input
   const isValidBinary = /^[01]+$/.test(binaryValue)
@@ -223,21 +235,21 @@ export function BitGroupingVisualizer({
         {/* Step 1: Original Binary */}
         {getStepVisibility('original') && (
           <div
-            className="p-4 rounded-md border"
+            className={`p-4 rounded-md border ${isMobile ? 'p-3' : 'p-4'}`}
             style={{
               backgroundColor: 'var(--bg-secondary)',
               borderColor: 'var(--border-color)',
               opacity: animationStep === 'original' ? 1 : 0.6,
             }}
           >
-            <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+            <div className={`font-medium mb-2 ${isMobile ? 'text-sm' : 'text-sm'}`} style={{ color: 'var(--text-primary)' }}>
               Original Binary:
             </div>
             <div className="flex gap-1 flex-wrap">
               {bits.map((bit, index) => (
                 <span
                   key={index}
-                  className="inline-flex items-center justify-center w-8 h-8 rounded-md font-mono font-bold text-lg"
+                  className={`inline-flex items-center justify-center rounded-md font-mono font-bold ${isMobile ? 'w-10 h-10 text-xl' : 'w-8 h-8 text-lg'}`}
                   style={{
                     backgroundColor: bit === 1 ? 'var(--success-bg)' : 'var(--bg-tertiary)',
                     color: bit === 1 ? 'var(--success-text)' : 'var(--text-secondary)',
@@ -248,7 +260,7 @@ export function BitGroupingVisualizer({
                 </span>
               ))}
             </div>
-            <div className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
+            <div className={`mt-2 ${isMobile ? 'text-xs' : 'text-xs'}`} style={{ color: 'var(--text-secondary)' }}>
               {bits.length} bits
             </div>
           </div>
@@ -301,17 +313,17 @@ export function BitGroupingVisualizer({
         {/* Step 3: Grouping */}
         {getStepVisibility('grouping') && (
           <div
-            className="p-4 rounded-md border"
+            className={`p-4 rounded-md border ${isMobile ? 'p-3' : 'p-4'}`}
             style={{
               backgroundColor: 'var(--bg-secondary)',
               borderColor: 'var(--border-color)',
               opacity: animationStep === 'grouping' ? 1 : 0.6,
             }}
           >
-            <div className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>
+            <div className={`font-medium mb-3 ${isMobile ? 'text-sm' : 'text-sm'}`} style={{ color: 'var(--text-primary)' }}>
               Grouped into {groupSize}-bit sets:
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className={`flex gap-2 flex-wrap ${isMobile ? 'gap-3' : 'gap-2'}`}>
               {groups.map((group, groupIndex) => {
                 const colors = getGroupColor(groupIndex)
                 return (
@@ -320,18 +332,18 @@ export function BitGroupingVisualizer({
                     onMouseEnter={() => setHoveredGroup(groupIndex)}
                     onMouseLeave={() => setHoveredGroup(null)}
                     onClick={() => setSelectedGroup(selectedGroup === groupIndex ? null : groupIndex)}
-                    className="cursor-pointer transition-all p-2 rounded-md border"
+                    className={`cursor-pointer transition-all rounded-md border ${isMobile ? 'p-3' : 'p-2'}`}
                     style={{
                       backgroundColor: colors.bg,
                       borderColor: colors.border,
                       transform: selectedGroup === groupIndex ? 'scale(1.05)' : 'scale(1)',
                     }}
                   >
-                    <div className="flex gap-1 mb-1">
+                    <div className={`flex gap-1 mb-1 ${isMobile ? 'gap-2' : 'gap-1'}`}>
                       {group.bits.map((bit, bitIndex) => (
                         <span
                           key={bitIndex}
-                          className="inline-flex items-center justify-center w-6 h-6 rounded font-mono font-bold text-sm"
+                          className={`inline-flex items-center justify-center rounded font-mono font-bold ${isMobile ? 'w-8 h-8 text-lg' : 'w-6 h-6 text-sm'}`}
                           style={{
                             backgroundColor: bit === 1 ? 'var(--success-bg)' : 'var(--bg-tertiary)',
                             color: bit === 1 ? 'var(--success-text)' : 'var(--text-secondary)',

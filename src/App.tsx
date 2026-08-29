@@ -1,42 +1,119 @@
-import { useState } from 'react'
-import KMapSimulator from './simulators/kmap/KMapSimulator'
-import KMapPractice from './simulators/kmap/practice/KMapPractice'
-import { GateSimulator } from './simulators/gates'
-import { CircuitDesigner } from './simulators/circuit'
-import { NumberSystemsSimulator } from './simulators/numbersystems'
+import { useState, useEffect, lazy, Suspense, useCallback, memo } from 'react'
+import { ResponsiveGrid } from './components/ui/ResponsiveGrid'
+import { LoadingSpinner } from './components/ui/LoadingSpinner'
 
-type View = 'home' | 'kmap' | 'practice' | 'gates' | 'circuit' | 'numbersystems'
+const KMapSimulator = lazy(() => import('./simulators/kmap/KMapSimulator'))
+const KMapPractice = lazy(() => import('./simulators/kmap/practice/KMapPractice'))
+const GateSimulator = lazy(() => import('./simulators/gates/GateSimulator'))
+const CircuitDesigner = lazy(() => import('./simulators/circuit/CircuitDesigner'))
+const NumberSystemsSimulator = lazy(() => import('./simulators/numbersystems').then(module => ({ default: module.NumberSystemsSimulator })))
+const FaqPage = lazy(() => import('./simulators/kmap/components/FaqPage'))
 
-export default function App() {
-  const [currentView, setCurrentView] = useState<View>('home')
+type View = 'home' | 'kmap' | 'practice' | 'gates' | 'circuit' | 'numbersystems' | 'faq'
+
+interface AppProps {
+  currentView?: View
+  setCurrentView?: React.Dispatch<React.SetStateAction<View>>
+}
+
+export default function App({ currentView: externalCurrentView, setCurrentView: externalSetCurrentView }: AppProps) {
+  // Use internal state if props are not provided (for testing)
+  const [internalCurrentView, internalSetCurrentView] = useState<View>('home')
+  const currentView = externalCurrentView ?? internalCurrentView
+  const baseSetCurrentView = externalSetCurrentView ?? internalSetCurrentView
+  
+  // View transition state
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  // Handle view transitions with animation
+  const handleViewChange = useCallback((newView: View) => {
+    setIsTransitioning(true)
+    baseSetCurrentView(newView)
+    
+    // Reset transition after animation
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 300)
+  }, [baseSetCurrentView])
+
+  // Enhanced setCurrentView with transition support
+  const wrappedSetCurrentView = useCallback((newView: View | ((prev: View) => View)) => {
+    const actualNewView = typeof newView === 'function' ? newView(currentView) : newView
+    if (actualNewView !== currentView) {
+      handleViewChange(actualNewView)
+    }
+  }, [currentView, handleViewChange])
+
+  // Use wrapped version for internal navigation
+  const finalSetCurrentView = wrappedSetCurrentView
+
+  // For external navigation, pass the wrapped version to maintain state
+  useEffect(() => {
+    if (externalSetCurrentView) {
+      // External navigation controls the view, but we need to sync our transition state
+      setIsTransitioning(false)
+    }
+  }, [externalSetCurrentView, currentView])
 
   if (currentView === 'gates') {
-    return <GateSimulator onBackToHome={() => setCurrentView('home')} />
+    return (
+      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+        <Suspense fallback={<LoadingSpinner centered />}>
+          <GateSimulator onBackToHome={() => finalSetCurrentView('home')} />
+        </Suspense>
+      </div>
+    )
   }
 
   if (currentView === 'circuit') {
-    return <CircuitDesigner onBackToHome={() => setCurrentView('home')} />
+    return (
+      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+        <Suspense fallback={<LoadingSpinner centered />}>
+          <CircuitDesigner onBackToHome={() => finalSetCurrentView('home')} />
+        </Suspense>
+      </div>
+    )
   }
 
   if (currentView === 'numbersystems') {
-    return <NumberSystemsSimulator onBackToHome={() => setCurrentView('home')} key="numbersystems" />
+    return (
+      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+        <Suspense fallback={<LoadingSpinner centered />}>
+          <NumberSystemsSimulator onBackToHome={() => finalSetCurrentView('home')} key="numbersystems" />
+        </Suspense>
+      </div>
+    )
+  }
+
+  if (currentView === 'faq') {
+    return (
+      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+        <Suspense fallback={<LoadingSpinner centered />}>
+          <FaqPage onBackToHome={() => finalSetCurrentView('home')} />
+        </Suspense>
+      </div>
+    )
   }
 
   if (currentView === 'kmap' || currentView === 'practice') {
     if (currentView === 'kmap') {
       return (
-        <KMapSimulator
-          onBackToHome={() => setCurrentView('home')}
-          onOpenPractice={() => setCurrentView('practice')}
-        />
+        <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+          <Suspense fallback={<LoadingSpinner centered />}>
+            <KMapSimulator
+              onBackToHome={() => finalSetCurrentView('home')}
+              onOpenPractice={() => finalSetCurrentView('practice')}
+            />
+          </Suspense>
+        </div>
       )
     }
     return (
-      <div>
-        <nav className="px-4 py-1.5 flex items-center gap-4 border-b" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+        <nav className="px-3 sm:px-4 py-1.5 flex items-center gap-2 sm:gap-4 border-b flex-wrap" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
           <button
-            onClick={() => setCurrentView('home')}
-            className="font-medium transition-colors"
+            onClick={() => finalSetCurrentView('home')}
+            className="font-medium transition-colors text-sm sm:text-base"
             style={{ color: 'var(--accent-primary)' }}
             onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary-hover)'}
             onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
@@ -44,8 +121,8 @@ export default function App() {
             Back to Home
           </button>
           <button
-            onClick={() => setCurrentView('kmap')}
-            className="font-medium text-sm transition-colors"
+            onClick={() => finalSetCurrentView('kmap')}
+            className="font-medium text-xs sm:text-sm transition-colors"
             style={{ color: 'var(--accent-primary)' }}
             onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-primary-hover)'}
             onMouseLeave={(e) => e.currentTarget.style.color = 'var(--accent-primary)'}
@@ -53,55 +130,51 @@ export default function App() {
             ← K-map simulator
           </button>
         </nav>
-        <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-          <KMapPractice />
+        <div className="flex-1" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+          <Suspense fallback={<LoadingSpinner centered />}>
+            <KMapPractice />
+          </Suspense>
         </div>
       </div>
     )
   }
 
   return (
-    <main style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      <div className="mx-auto max-w-4xl px-4 py-2">
-        {/* <h1 className="mt-4 text-3xl sm:text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>DigiWorld</h1> */}
-        {/* <p className="mt-4 text-slate-300">
-          Concept → Visualization → Experimentation → Practice. The K-map module
-          is the flagship; the logic and educational engines are seeded across a
-          strict four-layer architecture.
-        </p> */}
-        {/* <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Layer title="Logic Engine" note="Pure TS · Boolean / K-map / circuits" />
-          <Layer title="Educational Engine" note="Why · hints · mistakes · steps" />
-          <Layer title="Application" note="Orchestration · use-cases · no math" />
-          <Layer title="Presentation" note="React · SVG · motion · UI" />
-        </div> */}
+    <main className="flex-1" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+      <div className={`mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 transition-all duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
 
-        <div className="mt-2 mb-2">
-          <h2 className="text-2xl font-semibold mb-2" style={{ color: 'var(--accent-primary)' }}>Simulators</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <h2 className="text-xl font-semibold mb-2 sm:mb-3" style={{ color: 'var(--accent-primary)' }}>Simulators</h2>
+          <ResponsiveGrid cols={{ xs: 1, sm: 2, lg: 3 }} gap="3">
             <SimulatorCard
               title="Karnaugh Map Simulator"
               description="Interactive K-map learning tool with simplification, grouping validation, and educational content."
               status="Ready"
-              onClick={() => setCurrentView('kmap')}
+              onClick={() => finalSetCurrentView('kmap')}
             />
             <SimulatorCard
               title="Logic Gates"
               description="Interactive logic gate simulator with togglable inputs, truth tables, and step-by-step explanations."
               status="Ready"
-              onClick={() => setCurrentView('gates')}
+              onClick={() => finalSetCurrentView('gates')}
             />
             <SimulatorCard
               title="Circuit Designer"
               description="Logisim-style visual canvas: drag gates and pins, draw wires, toggle inputs, and simulate combinational circuits live."
               status="Ready"
-              onClick={() => setCurrentView('circuit')}
+              onClick={() => finalSetCurrentView('circuit')}
             />
             <SimulatorCard
               title="Number Systems"
               description="Interactive number systems converter supporting decimal, binary, hexadecimal, and octal with educational content and advanced visualizations."
               status="Ready"
-              onClick={() => setCurrentView('numbersystems')}
+              onClick={() => finalSetCurrentView('numbersystems')}
+            />
+            <SimulatorCard
+              title="FAQ & Help"
+              description="Frequently asked questions and helpful guides for using all DigiWorld simulators."
+              status="Ready"
+              onClick={() => finalSetCurrentView('faq')}
             />
             <SimulatorCard
               title="Combinational Circuits"
@@ -115,14 +188,14 @@ export default function App() {
               status="Coming Soon"
               disabled
             />
-          </div>
+          </ResponsiveGrid>
         </div>
       </div>
     </main>
   )
 }
 
-function SimulatorCard({
+const SimulatorCard = memo(function SimulatorCard({
   title,
   description,
   status,
@@ -135,32 +208,37 @@ function SimulatorCard({
   onClick?: () => void
   disabled?: boolean
 }) {
+  const handleMouseEnter = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!disabled) {
+      e.currentTarget.style.borderColor = 'var(--accent-primary)';
+      e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+    }
+  }, [disabled])
+
+  const handleMouseLeave = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!disabled) {
+      e.currentTarget.style.borderColor = 'var(--border-color)';
+      e.currentTarget.style.backgroundColor = 'var(--bg-card)';
+    }
+  }, [disabled])
+
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`text-left rounded-lg border p-6 transition-colors ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+      className={`text-left rounded-lg border p-2 sm:p-2.5 lg:p-3 transition-colors ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
       style={{
         backgroundColor: disabled ? 'var(--bg-tertiary)' : 'var(--bg-card)',
-        borderColor: 'var(--border-color)'
+        borderColor: 'var(--border-color)',
+        minHeight: '100px'
       }}
-      onMouseEnter={(e) => {
-        if (!disabled) {
-          e.currentTarget.style.borderColor = 'var(--accent-primary)';
-          e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!disabled) {
-          e.currentTarget.style.borderColor = 'var(--border-color)';
-          e.currentTarget.style.backgroundColor = 'var(--bg-card)';
-        }
-      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      <div className="flex items-start justify-between">
-        <h3 className="font-semibold text-lg" style={{ color: 'var(--accent-primary)' }}>{title}</h3>
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="font-semibold text-sm sm:text-base" style={{ color: 'var(--accent-primary)' }}>{title}</h3>
         <span
-          className={`text-xs px-2 py-1 rounded ${status === 'Ready' ? '' : ''}`}
+          className={`text-[10px] sm:text-xs px-1.5 py-0.5 rounded shrink-0 ${status === 'Ready' ? '' : ''}`}
           style={{
             backgroundColor: status === 'Ready' ? 'var(--success-bg)' : 'var(--bg-tertiary)',
             color: status === 'Ready' ? 'var(--success-text)' : 'var(--text-muted)'
@@ -169,7 +247,7 @@ function SimulatorCard({
           {status}
         </span>
       </div>
-      <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{description}</p>
+      <p className="mt-1.5 text-[11px] sm:text-xs leading-snug" style={{ color: 'var(--text-secondary)' }}>{description}</p>
     </button>
   )
-}
+})

@@ -1,6 +1,6 @@
 export default function ErrorBox({ message }: { message: string }) {
   return (
-    <div className="mt-2 rounded bg-red-950/60 border border-red-700/60 px-3 py-2 text-red-300 text-sm" role="alert">
+    <div className="mt-2 rounded px-3 py-2 text-sm" style={{ background: 'var(--error-bg)', border: '1px solid var(--error-border)', color: 'var(--error-text)' }} role="alert">
       {message}
     </div>
   )

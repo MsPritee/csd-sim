@@ -21,6 +21,18 @@ export function PositionValueVisualizer({
   const [selectedPosition, setSelectedPosition] = useState<number | null>(null)
   const [animationStep, setAnimationStep] = useState(0)
   const [showAnimation, setShowAnimation] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  
+  // Responsive detection
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Reset animation when data changes
   useEffect(() => {
@@ -97,27 +109,9 @@ export function PositionValueVisualizer({
       <div className="space-y-4">
         {/* Position Table */}
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
-                <th className="px-4 py-2 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Digit
-                </th>
-                <th className="px-4 py-2 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Position
-                </th>
-                <th className="px-4 py-2 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Value ({base}^n)
-                </th>
-                <th className="px-4 py-2 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Calculation
-                </th>
-                <th className="px-4 py-2 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Contribution
-                </th>
-              </tr>
-            </thead>
-            <tbody>
+          {isMobile ? (
+            // Mobile card-based layout
+            <div className="space-y-3">
               {positions.map((pos, index) => {
                 const isHovered = hoveredPosition === index
                 const isSelected = selectedPosition === index
@@ -125,59 +119,135 @@ export function PositionValueVisualizer({
                 const colors = getPositionColor(index, isHovered, isSelected)
 
                 return (
-                  <tr
+                  <div
                     key={index}
-                    onMouseEnter={() => setHoveredPosition(index)}
-                    onMouseLeave={() => setHoveredPosition(null)}
                     onClick={() => setSelectedPosition(isSelected ? null : index)}
-                    className="cursor-pointer transition-colors"
+                    className="p-4 rounded-lg border cursor-pointer transition-all"
                     style={{
                       backgroundColor: colors.bg,
-                      borderBottom: '1px solid var(--border-color)',
+                      borderColor: colors.border,
                       opacity: isAnimated ? 1 : 0.3,
                       transform: isAnimated ? 'translateX(0)' : 'translateX(-10px)',
                       transition: 'all 0.3s ease',
                     }}
                   >
-                    <td className="px-4 py-3">
+                    <div className="flex items-center justify-between mb-3">
                       <span
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-md font-mono font-bold text-lg"
+                        className="inline-flex items-center justify-center w-12 h-12 rounded-lg font-mono font-bold text-xl"
                         style={{
                           backgroundColor: pos.contribution > 0 ? 'var(--success-bg)' : 'var(--bg-tertiary)',
                           color: pos.contribution > 0 ? 'var(--success-text)' : 'var(--text-secondary)',
-                          border: `1px solid ${colors.border}`,
+                          border: `2px solid ${colors.border}`,
                         }}
                       >
                         {pos.digit}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 font-mono" style={{ color: colors.text }}>
-                      {pos.position}
-                    </td>
-                    <td className="px-4 py-3 font-mono" style={{ color: colors.text }}>
-                      {base}^{pos.position} = {pos.positionValue}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-sm" style={{ color: colors.text }}>
-                      {pos.calculation}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className="font-mono font-bold"
-                        style={{
-                          color: pos.contribution > 0 ? 'var(--success-text)' : 'var(--text-muted)',
-                          backgroundColor: pos.contribution > 0 ? 'var(--success-bg)' : 'transparent',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                        }}
-                      >
+                      <span className="font-mono font-bold text-lg" style={{ color: colors.text }}>
                         {pos.contribution}
                       </span>
-                    </td>
-                  </tr>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span style={{ color: 'var(--text-secondary)' }}>Position:</span>
+                        <span className="font-mono" style={{ color: colors.text }}>{pos.position}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span style={{ color: 'var(--text-secondary)' }}>Value:</span>
+                        <span className="font-mono" style={{ color: colors.text }}>{base}^{pos.position} = {pos.positionValue}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span style={{ color: 'var(--text-secondary)' }}>Calc:</span>
+                        <span className="font-mono" style={{ color: colors.text }}>{pos.calculation}</span>
+                      </div>
+                    </div>
+                  </div>
                 )
               })}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            // Desktop table layout
+            <table className="w-full border-collapse">
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
+                  <th className="px-4 py-2 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Digit
+                  </th>
+                  <th className="px-4 py-2 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Position
+                  </th>
+                  <th className="px-4 py-2 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Value ({base}^n)
+                  </th>
+                  <th className="px-4 py-2 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Calculation
+                  </th>
+                  <th className="px-4 py-2 text-left text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Contribution
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {positions.map((pos, index) => {
+                  const isHovered = hoveredPosition === index
+                  const isSelected = selectedPosition === index
+                  const isAnimated = showAnimation && index < animationStep
+                  const colors = getPositionColor(index, isHovered, isSelected)
+
+                  return (
+                    <tr
+                      key={index}
+                      onMouseEnter={() => setHoveredPosition(index)}
+                      onMouseLeave={() => setHoveredPosition(null)}
+                      onClick={() => setSelectedPosition(isSelected ? null : index)}
+                      className="cursor-pointer transition-colors"
+                      style={{
+                        backgroundColor: colors.bg,
+                        borderBottom: '1px solid var(--border-color)',
+                        opacity: isAnimated ? 1 : 0.3,
+                        transform: isAnimated ? 'translateX(0)' : 'translateX(-10px)',
+                        transition: 'all 0.3s ease',
+                      }}
+                    >
+                      <td className="px-4 py-3">
+                        <span
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-md font-mono font-bold text-lg"
+                          style={{
+                            backgroundColor: pos.contribution > 0 ? 'var(--success-bg)' : 'var(--bg-tertiary)',
+                            color: pos.contribution > 0 ? 'var(--success-text)' : 'var(--text-secondary)',
+                            border: `1px solid ${colors.border}`,
+                          }}
+                        >
+                          {pos.digit}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-mono" style={{ color: colors.text }}>
+                        {pos.position}
+                      </td>
+                      <td className="px-4 py-3 font-mono" style={{ color: colors.text }}>
+                        {base}^{pos.position} = {pos.positionValue}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-sm" style={{ color: colors.text }}>
+                        {pos.calculation}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className="font-mono font-bold"
+                          style={{
+                            color: pos.contribution > 0 ? 'var(--success-text)' : 'var(--text-muted)',
+                            backgroundColor: pos.contribution > 0 ? 'var(--success-bg)' : 'transparent',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                          }}
+                        >
+                          {pos.contribution}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Running Sum Animation */}
@@ -223,8 +293,11 @@ export function PositionValueVisualizer({
         </div>
 
         {/* Interactive Hint */}
-        <div className="text-xs text-center" style={{ color: 'var(--text-secondary)' }}>
-          Hover over rows to highlight • Click to isolate position • Animation shows step-by-step summation
+        <div className={`text-center ${isMobile ? 'text-xs' : 'text-xs'}`} style={{ color: 'var(--text-secondary)' }}>
+          {isMobile 
+            ? 'Tap cards to isolate position • Animation shows step-by-step summation'
+            : 'Hover over rows to highlight • Click to isolate position • Animation shows step-by-step summation'
+          }
         </div>
 
         {/* Isolated Position View */}

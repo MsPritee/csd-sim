@@ -95,16 +95,21 @@ export default function AdvancedPanel() {
       <ExpandableSection title="Connect Representations: Define & Analyze" defaultExpanded={false}>
         <div className="space-y-5">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <p className="text-slate-300 text-sm">
+            <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
               Define a function one way, see it on the K-map, and analyze its simplified solution.
             </p>
-            <div className="inline-flex rounded bg-slate-700 p-0.5" role="group" aria-label="View level">
+            <div className="inline-flex rounded p-0.5" style={{ background: 'var(--border-light)' }} role="group" aria-label="View level">
               {(['beginner', 'advanced'] as Level[]).map((l) => (
                 <button
                   key={l}
                   type="button"
                   onClick={() => setLevel(l)}
-                  className={`px-3 py-1 rounded text-sm capitalize transition-colors ${level === l ? 'bg-violet-600 text-white' : 'text-slate-300 hover:text-white'}`}
+                  className={`px-3 py-1 rounded text-sm capitalize transition-colors`}
+                  style={{
+                    ...(level === l
+                      ? { background: 'var(--accent-primary)', color: 'var(--text-primary)' }
+                      : { color: 'var(--text-primary)' }),
+                  }}
                   aria-pressed={level === l}
                 >
                   {l}

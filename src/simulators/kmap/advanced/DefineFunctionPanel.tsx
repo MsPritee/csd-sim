@@ -56,7 +56,12 @@ export default function DefineFunctionPanel({
               key={m}
               type="button"
               onClick={() => onSelectMethod(m)}
-              className={`px-3 py-1.5 rounded border text-sm transition-colors ${method === m ? 'border-violet-400 bg-violet-600/20 text-white' : 'border-slate-600 text-slate-300 hover:border-violet-400'}`}
+              className={`px-3 py-1.5 rounded border text-sm transition-colors border-violet-400`}
+              style={{
+                ...(method === m
+                  ? { background: 'color-mix(in srgb, var(--accent-primary) 20%, transparent)', color: 'var(--text-primary)' }
+                  : { borderColor: 'var(--border-color)', color: 'var(--text-primary)' }),
+              }}
               aria-pressed={method === m}
             >
               {METHOD_LABELS[m]}
@@ -65,12 +70,13 @@ export default function DefineFunctionPanel({
         </div>
 
         <div className="space-y-2">
-          <p className="text-slate-400 text-sm">{methodInputs[method].label}</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{methodInputs[method].label}</p>
           {methodInputs[method].fields}
           <button
             type="button"
             onClick={methodInputs[method].action}
-            className="px-4 py-2 rounded bg-violet-600 hover:bg-violet-500 text-white text-sm"
+            className="px-4 py-2 rounded text-sm"
+            style={{ background: 'var(--accent-primary)', color: 'var(--text-primary)' }}
           >
             {methodInputs[method].actionLabel}
           </button>
@@ -81,7 +87,7 @@ export default function DefineFunctionPanel({
       <Notice lines={notice} />
 
       {changedSinceDefine && (
-        <div className="rounded bg-amber-950/60 border border-amber-700/60 px-3 py-2 text-amber-300 text-sm" role="note">
+        <div className="rounded px-3 py-2 text-sm" style={{ background: 'var(--warning-bg)', color: 'var(--text-primary)' }} role="note">
           The function has changed since you defined it (you painted cells directly on the K-map). The
           map is now the source of truth; the analysis below reflects the current map, not your last
           typed input.

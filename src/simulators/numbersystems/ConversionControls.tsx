@@ -15,6 +15,7 @@ interface ConversionControlsProps {
   readonly totalSteps: number
   readonly phase: string
   readonly disabled?: boolean
+  readonly isPreviousDisabled?: boolean
 }
 
 export function ConversionControls({
@@ -29,15 +30,18 @@ export function ConversionControls({
   totalSteps,
   phase,
   disabled = false,
+  isPreviousDisabled: isPreviousDisabledOverride,
 }: ConversionControlsProps) {
   const getStepDisplay = () => {
     if (phase === 'complete') return 'Complete'
     if (phase === 'reading') return 'Reading remainders...'
+    if (currentStep < 0) return `Step 1 / ${totalSteps}`
     return `Step ${currentStep + 1} / ${totalSteps}`
   }
 
   const isNextDisabled = disabled || phase === 'complete'
-  const isPreviousDisabled = disabled || (currentStep === 0 && phase === 'division')
+  const isPreviousDisabled =
+    isPreviousDisabledOverride ?? (disabled || (currentStep === 0 && phase === 'division'))
 
   return (
     <div className="flex flex-wrap items-center gap-3 p-3">

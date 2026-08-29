@@ -77,7 +77,7 @@ export default function GateSymbol({ gate, inputs, output }: GateSymbolProps) {
       role="img"
       aria-label={`${gate} gate symbol`}
       data-testid={`gate-symbol-${gate.toLowerCase()}`}
-      className="w-full max-h-56"
+      className="w-full max-h-48 sm:max-h-56"
     >
       {/* wires */}
       {inputYs.map((y) => (

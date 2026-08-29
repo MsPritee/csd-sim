@@ -53,37 +53,34 @@ function ProblemInner() {
   const hintList = useMemo(() => hintsForProblem(problem), [problem])
   const locked = evaluation !== null
 
-  const highlightMap = useMemo(() => {
-    const map = new Map<number, number>()
-    groups.forEach((g, gi) => {
-      const color = gi % 5
-      g.forEach((m) => {
-        if (!map.has(m)) map.set(m, color)
-      })
-    })
-    return map
+  const groupOverlays = useMemo(() => {
+    return groups.map((g, gi) => ({
+      minterms: g,
+      colorIndex: gi % 5,
+    }))
   }, [groups])
 
   const fullyCorrect =
     evaluation !== null && evaluation.equivalent && evaluation.coversRequired && evaluation.minimal
 
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900 p-4 sm:p-6">
+    <div className="rounded-lg border p-4 sm:p-6" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold text-slate-100">{problem.title}</h2>
-          <p className="mt-1 text-sm text-slate-400">{problem.prompt}</p>
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{problem.title}</h2>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>{problem.prompt}</p>
         </div>
         <div className="text-right text-sm">
-          <div className="text-slate-400">
+          <div style={{ color: 'var(--text-secondary)' }}>
             Problem {Math.min(index + 1, sessionSize)} / {sessionSize}
           </div>
           <div className="mt-1 flex flex-wrap justify-end gap-1">
             {problem.concepts.map((c) => (
               <span
                 key={c}
-                className="rounded bg-slate-800 px-2 py-0.5 text-xs text-violet-300"
+                className="rounded px-2 py-0.5 text-xs"
+                style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--accent-primary)' }}
               >
                 {conceptTitle(c)}
               </span>
@@ -93,7 +90,7 @@ function ProblemInner() {
       </div>
 
       {/* Grid */}
-      <div className="overflow-x-auto rounded border border-slate-800 bg-slate-950/50 p-3">
+      <div className="overflow-x-auto rounded border p-3" style={{ borderColor: 'var(--border-light)', backgroundColor: 'var(--bg-primary)' }}>
         <KMapGrid
           kmap={model}
           onCellClick={(m) => selectCell(m)}
@@ -104,7 +101,7 @@ function ProblemInner() {
           onCellHover={setHoveredCell}
           showMintermNumbers
           showSOP={problem.mode === 'sop'}
-          highlightMap={highlightMap}
+          groupOverlays={groupOverlays}
           showAdjacency
         />
       </div>
@@ -125,21 +122,22 @@ function ProblemInner() {
 
       {/* Hints */}
       {mode !== 'challenge' && hintsUsed < hintList.length && (
-        <div className="mt-4 rounded border border-violet-800/50 bg-violet-950/30 p-3">
+        <div className="mt-4 rounded border p-3" style={{ borderColor: 'var(--accent-bg)', backgroundColor: 'var(--accent-bg)' }}>
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-violet-300">
+            <p className="text-sm font-medium" style={{ color: 'var(--accent-primary)' }}>
               Hint {hintLevelUsed(hintsUsed)} — need a nudge?
             </p>
             <button
               onClick={requestHint}
               disabled={locked}
-              className="rounded bg-violet-800/50 px-3 py-1.5 text-sm text-violet-200 hover:bg-violet-700/50 disabled:opacity-40"
+              className="rounded px-3 py-1.5 text-sm disabled:opacity-40"
+              style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-primary)' }}
             >
               Show hint
             </button>
           </div>
           {hintsUsed > 0 && (
-            <p className="mt-2 text-sm text-slate-200">
+            <p className="mt-2 text-sm" style={{ color: 'var(--text-primary)' }}>
               {hintList[hintsUsed - 1].text}
             </p>
           )}
@@ -147,8 +145,8 @@ function ProblemInner() {
       )}
 
       {/* Expression */}
-      <div className="mt-4 rounded border border-slate-700 bg-slate-950/40 p-3">
-        <label htmlFor="kmap-expr" className="block text-sm font-medium text-slate-300">
+      <div className="mt-4 rounded border p-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+        <label htmlFor="kmap-expr" className="block text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
           Simplified expression ({problem.mode.toUpperCase()})
         </label>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -157,19 +155,21 @@ function ProblemInner() {
             value={exprDraft}
             onChange={(e) => setExprDraft(e.target.value)}
             disabled={locked}
-            className="flex-1 rounded border border-slate-600 bg-slate-900 px-3 py-2 font-mono text-sm text-slate-100 outline-none focus:border-violet-500 disabled:opacity-40"
+            className="flex-1 rounded border px-3 py-2 font-mono text-sm outline-none disabled:opacity-40"
+            style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
             placeholder={propmodeDefault(problem.mode)}
           />
           <button
             onClick={() => submitExpression(exprDraft.trim())}
             disabled={locked || exprDraft.trim() === ''}
-            className="rounded bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 disabled:opacity-40"
+            className="rounded px-4 py-2 text-sm font-medium disabled:opacity-40"
+            style={{ backgroundColor: 'var(--success-bg)', color: 'var(--text-primary)' }}
           >
             Check expression
           </button>
         </div>
         {submittedExpression && locked && (
-          <p className="mt-2 font-mono text-sm text-slate-400 break-words">
+          <p className="mt-2 font-mono text-sm break-words" style={{ color: 'var(--text-secondary)' }}>
             Submitted: {submittedExpression}
           </p>
         )}
@@ -182,9 +182,9 @@ function ProblemInner() {
           <MistakeList mistakes={evaluation.mistakes} />
 
           {fullyCorrect && (
-            <p className="mt-3 text-sm text-slate-300">
+            <p className="mt-3 text-sm" style={{ color: 'var(--text-primary)' }}>
               Expected solution:{' '}
-              <span className="font-mono text-green-400">
+              <span className="font-mono" style={{ color: 'var(--success-text)' }}>
                 {problem.mode === 'sop' ? problem.expected.sop : problem.expected.pos}
               </span>
             </p>
@@ -195,13 +195,15 @@ function ProblemInner() {
               <>
                 <button
                   onClick={retry}
-                  className="rounded bg-slate-700 px-4 py-2 text-sm font-medium text-slate-100 hover:bg-slate-600"
+                  className="rounded px-4 py-2 text-sm font-medium"
+                  style={{ backgroundColor: 'var(--border-light)', color: 'var(--text-primary)' }}
                 >
                   Try again
                 </button>
                 <button
                   onClick={similar}
-                  className="rounded border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+                  className="rounded border px-4 py-2 text-sm"
+                  style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                 >
                   Similar problem
                 </button>
@@ -210,7 +212,8 @@ function ProblemInner() {
             {fullyCorrect && (
               <button
                 onClick={nextProblem}
-                className="rounded bg-violet-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-violet-500"
+                className="rounded px-5 py-2.5 text-sm font-medium"
+                style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--bg-primary)' }}
               >
                 Next problem →
               </button>
@@ -240,13 +243,13 @@ function ScoreBanner({
       : evaluation.coversRequired
         ? 'Good coverage — not equivalent'
         : 'Not quite'
-  const color = fullyCorrect
-    ? 'border-green-600 bg-green-950/40 text-green-300'
+  const bannerStyle: React.CSSProperties = fullyCorrect
+    ? { borderColor: 'var(--success-text)', backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }
     : evaluation.equivalent
-      ? 'border-amber-600 bg-amber-950/30 text-amber-300'
-      : 'border-red-700 bg-red-950/30 text-red-300'
+      ? { borderColor: 'var(--warning-text)', backgroundColor: 'var(--warning-bg)', color: 'var(--warning-text)' }
+      : { borderColor: 'var(--error-text)', backgroundColor: 'var(--error-bg)', color: 'var(--error-text)' }
   return (
-    <div className={`rounded border px-4 py-3 ${color}`}>
+    <div className="rounded border px-4 py-3" style={bannerStyle}>
       <div className="flex items-center justify-between">
         <span className="font-semibold">{label}</span>
         <span className="text-sm font-mono">Score: {evaluation.score}/100</span>

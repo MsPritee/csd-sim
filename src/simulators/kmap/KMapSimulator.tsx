@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { minterms, maxterms } from '../../core/kmap'
+import { minterms, maxterms, dontCares, simplify } from '../../core/kmap'
 import {
   performSimplification,
   loadExample,
@@ -10,18 +10,22 @@ import {
 import { explainGroup } from '../../education/adjacency'
 import { useKMapStore } from '../../stores/kmapStore'
 import KMapGrid from './components/KMapGrid'
-import SectionCard from './components/SectionCard'
-import ExampleLibrary from './components/ExampleLibrary'
-import VerifyPanel from './components/VerifyPanel'
+import FiveVarGrid from './components/FiveVarGrid'
 import TruthTablePanel from './components/TruthTablePanel'
-import SolutionWalkthrough from './components/SolutionWalkthrough'
-import GroupingSolution from './components/GroupingSolution'
-import SOPPOSConcept from './components/SOPPOSConcept/SOPPOSConcept'
 import SimulatorHeader from './components/SimulatorHeader'
 import KMapToolbar from './components/KMapToolbar'
 import CellInfoPopup from './components/CellInfoPopup'
-import LearningGuide from './components/LearningGuide'
 import AdvancedPanel from './advanced/AdvancedPanel'
+import TabbedPanel from './components/TabbedPanel'
+import ResultsTabContent from './components/ResultsTabContent'
+import LearningTabContent from './components/LearningTabContent'
+import ExamplesTabContent from './components/ExamplesTabContent'
+import SplitView from './components/SplitView'
+import OnboardingSystem from './components/OnboardingSystem'
+import PdfExportButton from './components/PdfExportButton'
+import ExpressionCircuitChain from './components/ExpressionCircuitChain'
+import StepByStepTutorial from './components/StepByStepTutorial'
+import { KMAP_GROUP_COLORS } from './components/kmapHighlight'
 import { type KMapExample } from './examples'
 
 interface KMapSimulatorProps {
@@ -48,17 +52,21 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
     setHoveredCell,
   } = useKMapStore()
 
-  const [showLearningGuide, setShowLearningGuide] = useState(false)
-  const [showSopPos, setShowSopPos] = useState(true)
-  const [walkthroughOpen, setWalkthroughOpen] = useState(false)
-  const [walkthroughHighlight, setWalkthroughHighlight] = useState<Map<number, number> | null>(null)
-  const [viewMode, setViewMode] = useState<'kmap' | 'truth' | 'both'>('both')
+  const [walkthroughHighlight, setWalkthroughHighlight] = useState<{ minterms: readonly number[]; colorIndex: number }[] | null>(null)
+  const [showGroups, setShowGroups] = useState(true)
+  const [viewMode, setViewMode] = useState<'kmap' | 'truth' | 'both' | 'split'>('both')
   const [cellInfoPinned, setCellInfoPinned] = useState<number | null>(null)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false)
 
-  const variableCount = variables.length as 2 | 3 | 4
+  const variableCount = variables.length as 2 | 3 | 4 | 5
+  const is5Var = variables.length === 5
 
-  const handleVariableCountChange = (count: 2 | 3 | 4) => {
-    setVariables(['A', 'B', 'C', 'D'].slice(0, count))
+  const handleVariableCountChange = (count: 2 | 3 | 4 | 5) => {
+    const vars = count === 5
+      ? ['A', 'B', 'C', 'D', 'E']
+      : ['A', 'B', 'C', 'D'].slice(0, count)
+    setVariables(vars)
   }
 
   const handleCellClick = (minterm: number) => {
@@ -92,10 +100,38 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
 
   const simplification = performSimplification(kmap)
 
+  // Full simplification with GroupedTerm data for circuit diagram
+  const fullSimplification = useMemo(() => {
+    const ones = new Set(minterms(kmap))
+    const zeros = new Set(maxterms(kmap))
+    const dc = new Set(dontCares(kmap))
+    return simplify(kmap, ones, zeros, dc)
+  }, [kmap])
+
   const walkthroughSolution = useMemo<KMapSolution | null>(
-    () => (walkthroughOpen ? generateWalkthrough(kmap, showSOP ? 'sop' : 'pos') : null),
-    [walkthroughOpen, kmap, showSOP],
+    () => generateWalkthrough(kmap, showSOP ? 'sop' : 'pos'),
+    [kmap, showSOP],
   )
+
+  const handleWalkthroughHighlight = (m: { minterms: readonly number[]; colorIndex: number }[] | null) => {
+    setWalkthroughHighlight(m)
+  }
+
+  // Auto-compute overlays from ALL simplification groups so they always show on the grid
+  const simplificationOverlays = useMemo(() => {
+    const groups = showSOP ? simplification.sopGroups : simplification.posGroups
+    return groups.map((g, i) => ({
+      minterms: g.cells,
+      colorIndex: i % KMAP_GROUP_COLORS.length,
+    }))
+  }, [simplification, showSOP])
+
+  // Effective overlays: walkthrough overrides when active, otherwise show all simplification groups
+  const effectiveOverlays = useMemo(() => {
+    if (walkthroughHighlight && walkthroughHighlight.length > 0) return walkthroughHighlight
+    if (showGroups && simplificationOverlays.length > 0) return simplificationOverlays
+    return undefined
+  }, [walkthroughHighlight, showGroups, simplificationOverlays])
 
   const selectedGroup = useMemo(
     () => Array.from(selectedCells).sort((a, b) => a - b),
@@ -116,10 +152,24 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
       ? `Σm(${Array.from(ones).sort((a, b) => a - b).join(', ')})`
       : `ΠM(${Array.from(zeros).sort((a, b) => a - b).join(', ')})`
 
+  const bg = {
+    page: { backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' },
+    card: { backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' },
+    tertiary: { backgroundColor: 'var(--bg-tertiary)' },
+    accent: { backgroundColor: 'var(--accent-primary)', color: '#fff' },
+    muted: { color: 'var(--text-secondary)' },
+    heading: { color: 'var(--accent-primary)' },
+  }
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-6">
+    <div className="min-h-screen p-1.5 sm:p-2 md:p-3" style={bg.page}>
       <div className="max-w-6xl mx-auto">
-        <SimulatorHeader onBackToHome={onBackToHome} onOpenPractice={onOpenPractice} />
+        <SimulatorHeader
+          onBackToHome={onBackToHome}
+          onOpenPractice={onOpenPractice}
+          onShowOnboarding={() => setShowOnboarding(true)}
+          onShowTutorial={() => setShowTutorial(true)}
+        />
 
         <KMapToolbar
           variableCount={variableCount}
@@ -131,33 +181,54 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
           onClear={clearKMap}
         />
 
-        <div className="grid items-start md:grid-cols-2 gap-6">
+        <div className="grid items-start md:grid-cols-2 gap-section">
           {/* K-Map Grid */}
-          <div className="bg-slate-900 rounded-lg p-4 sm:p-6 border border-slate-700">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <h2 className="text-lg sm:text-xl font-semibold text-violet-300">K-Map Grid</h2>
-              <div className="inline-flex rounded bg-slate-800 p-0.5" role="group" aria-label="View mode">
-                {(['kmap', 'both', 'truth'] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    onClick={() => setViewMode(mode)}
-                    aria-pressed={viewMode === mode}
-                    className={`px-2.5 py-1 rounded text-sm capitalize ${
-                      viewMode === mode ? 'bg-violet-600 text-white' : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    {mode === 'truth' ? 'Truth-Table' : mode === 'kmap' ? 'K-Map' : 'Both'}
-                  </button>
-                ))}
+          <div className="kmap-grid-container rounded-lg px-1 py-1 md:py-2 md:px-2.5 pb-1.5 sm:px-2" style={bg.card}>
+            <div className="flex items-center justify-between" style={{ minHeight: '44px' }}>
+              <h2 className="text-lg sm:text-xl font-semibold heading-dense" style={bg.heading}>K-Map Grid</h2>
+              <div className="flex items-center gap-control-group">
+                <button
+                  onClick={() => setShowGroups((g) => !g)}
+                  aria-pressed={showGroups}
+                  className="px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all touch-action-manipulation min-h-[44px]"
+                  style={{
+                    backgroundColor: showGroups ? 'var(--accent-primary)' : 'transparent',
+                    color: showGroups ? '#fff' : 'var(--text-secondary)',
+                    boxShadow: showGroups ? 'var(--shadow-accent)' : 'none',
+                  }}
+                  onMouseEnter={(e) => { if (!showGroups) e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)' }}
+                  onMouseLeave={(e) => { if (!showGroups) e.currentTarget.style.backgroundColor = 'transparent' }}
+                >
+                  {showGroups ? 'Groups On' : 'Groups Off'}
+                </button>
+                <div className="flex items-center gap-control-group" role="group" aria-label="View mode">
+                  {(['kmap', 'both', 'truth', 'split'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setViewMode(mode)}
+                      aria-pressed={viewMode === mode}
+                      className="px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all touch-action-manipulation min-h-[44px]"
+                      style={{
+                        backgroundColor: viewMode === mode ? 'var(--accent-primary)' : 'transparent',
+                        color: viewMode === mode ? '#fff' : 'var(--text-secondary)',
+                        boxShadow: viewMode === mode ? 'var(--shadow-accent)' : 'none',
+                      }}
+                      onMouseEnter={(e) => { if (viewMode !== mode) e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)' }}
+                      onMouseLeave={(e) => { if (viewMode !== mode) e.currentTarget.style.backgroundColor = 'transparent' }}
+                    >
+                      {mode === 'truth' ? 'Truth-Table' : mode === 'kmap' ? 'K-Map' : mode === 'split' ? 'Split' : 'Both'}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-            <p className="text-sm text-slate-400 mb-4">
+            <p className="text-xs sm:text-sm mb-1 sm:mb-1.5" style={bg.muted}>
               Click cells to set values. Ctrl+click to select groups for validation. Right-click a cell
               to pin its detailed information; hover any cell to preview it live.
             </p>
 
-            {viewMode !== 'truth' && (
-              <KMapGrid
+            {viewMode === 'split' && !is5Var ? (
+              <SplitView
                 kmap={kmap}
                 onCellClick={handleCellClick}
                 onCellSelect={handleCellSelect}
@@ -167,185 +238,144 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
                 onCellHover={setHoveredCell}
                 showMintermNumbers={showMintermNumbers}
                 showSOP={showSOP}
-                highlightMap={walkthroughHighlight ?? undefined}
+                groupOverlays={effectiveOverlays}
                 showAdjacency
+                cellInfoPinned={cellInfoPinned}
+                setCellInfoPinned={setCellInfoPinned}
               />
-            )}
+            ) : (
+              <>
+                {viewMode !== 'truth' && (
+                  is5Var ? (
+                    <FiveVarGrid
+                      kmap={kmap}
+                      onCellClick={handleCellClick}
+                      onCellSelect={handleCellSelect}
+                      onCellInfo={(minterm) => setCellInfoPinned(minterm)}
+                      selectedCells={selectedCells}
+                      hoveredCell={hoveredCell}
+                      onCellHover={setHoveredCell}
+                      showMintermNumbers={showMintermNumbers}
+                      showSOP={showSOP}
+                      groupOverlays={effectiveOverlays}
+                      showAdjacency
+                    />
+                  ) : (
+                    <KMapGrid
+                      kmap={kmap}
+                      onCellClick={handleCellClick}
+                      onCellSelect={handleCellSelect}
+                      onCellInfo={(minterm) => setCellInfoPinned(minterm)}
+                      selectedCells={selectedCells}
+                      hoveredCell={hoveredCell}
+                      onCellHover={setHoveredCell}
+                      showMintermNumbers={showMintermNumbers}
+                      showSOP={showSOP}
+                      groupOverlays={effectiveOverlays}
+                      showAdjacency
+                    />
+                  )
+                )}
 
-            {viewMode !== 'truth' && (cellInfoPinned !== null || hoveredCell !== null) && (
-              <CellInfoPopup
-                kmap={kmap}
-                minterm={hoveredCell ?? cellInfoPinned!}
-                onClose={() => setCellInfoPinned(null)}
-              />
-            )}
+                {viewMode !== 'truth' && (cellInfoPinned !== null || hoveredCell !== null) && (
+                  <CellInfoPopup
+                    kmap={kmap}
+                    minterm={hoveredCell ?? cellInfoPinned!}
+                    showSOP={showSOP}
+                    onClose={() => setCellInfoPinned(null)}
+                  />
+                )}
 
-            {viewMode !== 'kmap' && (
-              <div className="mt-6">
-                <TruthTablePanel
-                  kmap={kmap}
+                {viewMode !== 'kmap' && (
+                  <div className="mt-2 sm:mt-3">
+                    <TruthTablePanel
+                      kmap={kmap}
+                      showSOP={showSOP}
+                      highlightedCell={hoveredCell ?? cellInfoPinned}
+                      onSelectCell={(minterm) => setHoveredCell(minterm)}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Results Panel - Tabbed Interface */}
+          <TabbedPanel
+              resultsTab={
+                <ResultsTabContent
                   showSOP={showSOP}
-                  highlightedCell={hoveredCell ?? cellInfoPinned}
-                  onSelectCell={(minterm) => setHoveredCell(minterm)}
+                  setShowSOP={setShowSOP}
+                  simplifiedExpression={simplifiedExpression}
+                  originalExpression={originalExpression}
+                  sopGroups={simplification.sopGroups.map(g => ({ cells: Array.from(g.cells), productText: g.productText, sumText: g.sumText }))}
+                  posGroups={simplification.posGroups.map(g => ({ cells: Array.from(g.cells), productText: g.productText, sumText: g.sumText }))}
+                  sopTerms={sopTerms}
+                  posTerms={posTerms}
+                  kmap={kmap}
+                  selectedGroup={selectedGroup}
+                  groupValidation={groupValidation ? { valid: groupValidation.valid, issues: groupValidation.issues?.map(i => ({ message: i.message })) } : null}
+                  groupedSummary={groupedSummary ? { reasons: groupedSummary.reasons.map(r => ({ text: r.text })) } : null}
+                  sopGroupsData={fullSimplification.sopGroups}
+                  posGroupsData={fullSimplification.posGroups}
+                  pdfExportButton={
+                    <PdfExportButton
+                      kmap={kmap}
+                      simplifiedExpression={simplifiedExpression}
+                      originalExpression={originalExpression}
+                      showSOP={showSOP}
+                      sopTerms={sopTerms}
+                      posTerms={posTerms}
+                      groupCount={(showSOP ? simplification.sopGroups : simplification.posGroups).length}
+                    />
+                  }
+                    expressionChain={
+                      <ExpressionCircuitChain
+                        simplifiedExpression={simplifiedExpression}
+                        groups={fullSimplification.sopGroups}
+                        mode={showSOP ? 'sop' : 'pos'}
+                        kmap={kmap}
+                      />
+                    }
                 />
-              </div>
-            )}
-          </div>
-
-          {/* Results Panel */}
-          <div className="space-y-6">
-            {/* Simplified Expression */}
-            <SectionCard
-              title="Simplified Expression"
-              headerRight={
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowSOP(true)}
-                    className={`px-3 py-1 rounded text-sm ${
-                      showSOP ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300'
-                    }`}
-                  >
-                    SOP
-                  </button>
-                  <button
-                    onClick={() => setShowSOP(false)}
-                    className={`px-3 py-1 rounded text-sm ${
-                      !showSOP ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300'
-                    }`}
-                  >
-                    POS
-                  </button>
-                </div>
               }
-            >
-
-              <div className="bg-slate-800 rounded p-4 font-mono text-lg break-words">
-                {simplifiedExpression}
-              </div>
-
-              <div className="mt-4">
-                <h3 className="text-sm font-semibold text-slate-300 mb-2">Groups</h3>
-                <div className="space-y-2">
-                  {(showSOP ? simplification.sopGroups : simplification.posGroups).map((group, idx) => (
-                    <div key={idx} className="text-sm bg-slate-800 rounded p-2">
-                      <span className="text-violet-400">Group {idx + 1}:</span>{' '}
-                      <span className="text-slate-300">
-                        Cells: [{group.cells.join(', ')}] → {showSOP ? group.productText : group.sumText}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </SectionCard>
-
-            {/* Solution Walkthrough */}
-            <div className="bg-slate-900 rounded-lg border border-slate-700">
-              <div className="flex items-center justify-between p-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-violet-300">Solution Walkthrough</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Step-by-step {showSOP ? 'SOP' : 'POS'} derivation of the simplified expression.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setWalkthroughOpen(!walkthroughOpen)}
-                  aria-expanded={walkthroughOpen}
-                  aria-label="Toggle Solution Walkthrough"
-                  className="flex items-center justify-center h-8 w-8 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xl leading-none"
-                >
-                  {walkthroughOpen ? '−' : '+'}
-                </button>
-              </div>
-              {walkthroughOpen && walkthroughSolution && (
-                <div className="px-4 pb-4">
-                  <SolutionWalkthrough
-                    solution={walkthroughSolution}
-                    onHighlightChange={(m) => setWalkthroughHighlight(m)}
-                  />
-                  <GroupingSolution
-                    solution={walkthroughSolution}
-                    onHighlightChange={(m) => setWalkthroughHighlight(m)}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Verify */}
-            <VerifyPanel
-              kmap={kmap}
-              showSOP={showSOP}
-              sopTerms={sopTerms}
-              posTerms={posTerms}
-              simplifiedExpression={simplifiedExpression}
-              originalExpression={originalExpression}
-              selectedGroup={selectedGroup}
-            />
-
-            {/* Learning Guide */}
-            <LearningGuide open={showLearningGuide} onToggle={() => setShowLearningGuide(!showLearningGuide)} />
-
-            {/* Why SOP Uses 1s and POS Uses 0s? */}
-            <div className="bg-slate-900 rounded-lg border border-slate-700">
-              <div className="flex items-center justify-between gap-3 p-4">
-                <h2 className="text-lg font-semibold text-violet-300">
-                  Why SOP Uses 1s and POS Uses 0s?
-                </h2>
-                <button
-                  onClick={() => setShowSopPos(!showSopPos)}
-                  className="flex items-center justify-center h-8 w-8 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xl leading-none"
-                  aria-expanded={showSopPos}
-                  aria-label="Toggle Why SOP Uses 1s and POS Uses 0s"
-                >
-                  {showSopPos ? '−' : '+'}
-                </button>
-              </div>
-
-              {showSopPos && (
-                <div className="px-4 pb-4">
-                  <SOPPOSConcept onLearnGrouping={() => setShowLearningGuide(true)} />
-                </div>
-              )}
-            </div>
-
-            {/* Example Library */}
-            <ExampleLibrary onLoadExample={handleLoadExample} />
-
-            {/* Group Validation */}
-            {groupValidation && (
-              <SectionCard
-                title="Group Validation"
-                defaultOpen
-              >
-                <div className="flex items-center justify-between">
-                  {groupValidation.valid ? (<div className="text-green-400">
-                    <p className="font-semibold">Valid Group</p>
-                    <p className="text-sm text-slate-400 mt-1">
-                      Selected cells form a valid K-map group.
-                    </p>
-                    <ul className="text-sm text-slate-400 mt-2 space-y-1 list-disc list-inside">
-                      {groupedSummary.reasons.map((r, idx) => (
-                        <li key={idx}>{r.text}</li>
-                      ))}
-                    </ul>
-                  </div>) : (
-                    <div className="text-red-400">
-                      <p className="font-semibold">Invalid Group</p>
-                      <ul className="text-sm text-slate-400 mt-1 list-disc list-inside">
-                        {groupValidation.issues.map((issue, idx) => (
-                          <li key={idx}>{issue.message}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </SectionCard>
-            )}
-          </div>
+              learningTab={
+                <LearningTabContent
+                  showSOP={showSOP}
+                  walkthroughSolution={walkthroughSolution}
+                  onWalkthroughHighlight={handleWalkthroughHighlight}
+                />
+              }
+              examplesTab={
+                <ExamplesTabContent
+                  onLoadExample={handleLoadExample}
+                />
+              }
+          />
         </div>
 
         {/* Connect Representations: Define & Analyze — full width below both panels */}
-        <AdvancedPanel />
+        <div className="mt-2 sm:mt-3">
+          <AdvancedPanel />
+        </div>
       </div>
+
+      {/* Onboarding System */}
+      {showOnboarding && (
+        <OnboardingSystem
+          onComplete={() => setShowOnboarding(false)}
+          onSkip={() => setShowOnboarding(false)}
+          autoStart={true}
+        />
+      )}
+
+      {/* Step-by-Step Interactive Tutorial */}
+      {showTutorial && (
+        <StepByStepTutorial
+          onComplete={() => setShowTutorial(false)}
+          onSkip={() => setShowTutorial(false)}
+        />
+      )}
     </div>
   )
 }

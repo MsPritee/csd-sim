@@ -22,13 +22,12 @@ export default function ExampleLibrary({ onLoadExample }: ExampleLibraryProps) {
               borderColor: 'var(--border-color)'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
               e.currentTarget.style.borderColor = 'var(--accent-primary)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
               e.currentTarget.style.borderColor = 'var(--border-color)';
             }}
+            title={`${example.name}: ${example.description}`}
           >
             <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{example.name}</div>
             <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{example.description}</div>

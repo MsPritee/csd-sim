@@ -9,6 +9,7 @@ import {
 } from '../../../core/boolean/evaluate'
 import { uncoveredRequired } from '../../../core/kmap/coverage'
 import SectionCard from './SectionCard'
+import Badge from './Badge'
 
 interface VerifyPanelProps {
   kmap: KMapModel
@@ -67,61 +68,75 @@ export default function VerifyPanel({
       title="Verify"
       subtitle={`Does the simplified ${showSOP ? 'SOP' : 'POS'} expression reproduce the K-map truth table on every row?`}
       headerRight={
-        <span
-          className={`rounded px-2 py-0.5 text-xs font-semibold ${
-            comparison.equal
-              ? 'bg-green-900/40 text-green-300'
-              : 'bg-red-900/40 text-red-300'
-          }`}
-          data-testid="verify-badge"
-        >
+        <Badge variant={comparison.equal ? 'success' : 'error'} size="sm" data-testid="verify-badge">
           {comparison.equal ? '✓ Equivalent' : '✗ Differs'}
-        </span>
+        </Badge>
       }
     >
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-        <div className="rounded border border-slate-700 bg-slate-800 p-3">
-          <p className="text-xs text-slate-400">Original (K-map)</p>
-          <p className="mt-1 font-mono text-slate-200 break-words">
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <div
+          className="rounded p-2"
+          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}
+        >
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Original (K-map)</p>
+          <p className="mt-0.5 font-mono text-xs" style={{ color: 'var(--text-primary)' }}>
             {originalExpression || (showSOP ? 'sum of minterms' : 'product of maxterms')}
           </p>
         </div>
-        <div className="rounded border border-slate-700 bg-slate-800 p-3">
-          <p className="text-xs text-slate-400">Simplified {showSOP ? 'SOP' : 'POS'}</p>
-          <p className="mt-1 font-mono text-violet-200 break-words">{simplifiedExpression}</p>
+        <div
+          className="rounded p-2"
+          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}
+        >
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Simplified {showSOP ? 'SOP' : 'POS'}</p>
+          <p className="mt-0.5 font-mono text-xs" style={{ color: 'var(--accent-secondary)' }}>{simplifiedExpression}</p>
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
-        <div className="rounded border border-slate-700 bg-slate-800 p-2">
-          <p className="text-xs text-slate-400">Simplified terms</p>
-          <p className="font-mono text-slate-200">{metrics.simplifiedTerms}</p>
+      <div className="mt-2 grid grid-cols-3 gap-2 text-center text-sm">
+        <div
+          className="rounded p-1.5"
+          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}
+          title="Number of product/sum terms in simplified expression"
+        >
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Terms</p>
+          <p className="font-mono text-xs" style={{ color: 'var(--text-primary)' }}>{metrics.simplifiedTerms}</p>
         </div>
-        <div className="rounded border border-slate-700 bg-slate-800 p-2">
-          <p className="text-xs text-slate-400">Literals</p>
-          <p className="font-mono text-slate-200">{metrics.simplifiedLiterals}</p>
+        <div
+          className="rounded p-1.5"
+          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}
+          title="Total variable occurrences in simplified expression"
+        >
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Literals</p>
+          <p className="font-mono text-xs" style={{ color: 'var(--text-primary)' }}>{metrics.simplifiedLiterals}</p>
         </div>
-        <div className="rounded border border-slate-700 bg-slate-800 p-2">
-          <p className="text-xs text-slate-400">Ones covered</p>
-          <p className="font-mono text-slate-200">{metrics.outputOnes} / {allCells}</p>
+        <div
+          className="rounded p-1.5"
+          style={{ border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}
+          title="Cells with output value 1 (for SOP) or 0 (for POS)"
+        >
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Coverage</p>
+          <p className="font-mono text-xs" style={{ color: 'var(--text-primary)' }}>{metrics.outputOnes}/{allCells}</p>
         </div>
       </div>
 
       {comparison.differences.length > 0 && (
-        <div className="mt-3 rounded-lg border border-red-700/40 bg-red-900/10 p-3 text-sm">
-          <p className="font-semibold text-red-300">
+        <div
+          className="mt-3 rounded-lg p-3 text-sm error-animation"
+          style={{ border: '1px solid var(--error-border)', backgroundColor: 'var(--error-bg)' }}
+        >
+          <p className="font-semibold" style={{ color: 'var(--error-text)' }}>
             {comparison.differences.length} row
             {comparison.differences.length === 1 ? '' : 's'} differ
           </p>
-          <ul className="mt-1 space-y-1 text-xs text-slate-300 font-mono">
+          <ul className="mt-1 space-y-1 text-xs font-mono" style={{ color: 'var(--text-primary)' }}>
             {comparison.differences.map((d) => (
               <li key={d.minterm}>
                 {d.bits} → K-map {d.original ?? '—'}, simplified {d.simplified}
               </li>
             ))}
           </ul>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
             {hasDontCares
               ? 'Don\u2019t-care cells hide some covered rows from the check.'
               : showSOP
@@ -133,27 +148,27 @@ export default function VerifyPanel({
 
       {selectedGroup && selectedGroup.length > 0 && (
         <div
-          className={`mt-3 rounded-lg border p-3 text-sm ${
-            uncovered.length === 0
-              ? 'border-green-700/40 bg-green-900/10'
-              : 'border-amber-700/40 bg-amber-900/10'
-          }`}
+          className={`mt-3 rounded-lg p-3 text-sm ${uncovered.length === 0 ? 'success-animation' : 'warning-animation'}`}
+          style={{
+            border: uncovered.length === 0 ? '1px solid var(--success-border)' : '1px solid var(--warning-border)',
+            backgroundColor: uncovered.length === 0 ? 'var(--success-bg)' : 'var(--warning-bg)',
+          }}
           data-testid="verify-coverage"
         >
-          <p className="font-semibold text-slate-200">
+          <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
             Selected group coverage ({showSOP ? '1s' : '0s'})
           </p>
           {uncovered.length === 0 ? (
-            <p className="mt-1 text-green-300">
+            <p className="mt-1" style={{ color: 'var(--success-text)' }}>
               All required {showSOP ? '1s' : '0s'} are covered by your selected group.
             </p>
           ) : (
             <>
-              <p className="mt-1 text-amber-300">
+              <p className="mt-1" style={{ color: 'var(--warning-text)' }}>
                 Still uncovered required cell{uncovered.length === 1 ? '' : 's'}:{' '}
                 <span className="font-mono">m{uncovered.join(', m')}</span>
               </p>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
                 Add a group covering the remaining {showSOP ? '1s' : '0s'} before the simplified
                 sum is complete.
               </p>

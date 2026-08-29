@@ -57,7 +57,7 @@ export default function SOPPOSConcept({ startStepId, onLearnGrouping }: SOPPOSCo
     <div className="space-y-4" data-testid="soppos-concept">
       {/* progress */}
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-slate-500">
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           Step {currentIndex + 1} of {LESSON_STEPS.length}
         </span>
         <div className="flex gap-1">
@@ -66,9 +66,15 @@ export default function SOPPOSConcept({ startStepId, onLearnGrouping }: SOPPOSCo
               key={s.id}
               onClick={() => goTo(i)}
               aria-label={`Go to ${s.title}`}
-              className={`h-2 w-2 rounded-full transition-colors ${
-                i === currentIndex ? 'bg-violet-400' : i < currentIndex ? 'bg-violet-700' : 'bg-slate-700'
-              }`}
+              className="h-2 w-2 rounded-full transition-colors"
+              style={{
+                backgroundColor:
+                  i === currentIndex
+                    ? 'var(--accent-primary)'
+                    : i < currentIndex
+                      ? 'var(--accent-secondary)'
+                      : 'var(--bg-tertiary)',
+              }}
             />
           ))}
         </div>
@@ -81,10 +87,15 @@ export default function SOPPOSConcept({ startStepId, onLearnGrouping }: SOPPOSCo
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2 }}
-          className="rounded-lg border border-slate-700 bg-slate-900 p-4"
+          className="rounded-lg border p-4"
+          style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-card)' }}
         >
-          <h3 className="text-lg font-semibold text-violet-300">{step.title}</h3>
-          <p className="mb-4 text-sm text-slate-400">{step.subtitle}</p>
+          <h3 className="text-lg font-semibold" style={{ color: 'var(--accent-primary)' }}>
+            {step.title}
+          </h3>
+          <p className="mb-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {step.subtitle}
+          </p>
 
           <StepBody
             stepId={step.id}
@@ -99,20 +110,23 @@ export default function SOPPOSConcept({ startStepId, onLearnGrouping }: SOPPOSCo
         <button
           onClick={() => goTo(currentIndex - 1)}
           disabled={isFirst}
-          className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-300 transition-colors hover:bg-slate-700 disabled:opacity-40"
+          className="rounded px-3 py-1.5 text-sm transition-colors disabled:opacity-40"
+          style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
         >
           ← Back
         </button>
         <button
           onClick={() => goTo(currentIndex + 1)}
           disabled={isLast}
-          className="rounded bg-violet-600 px-3 py-1.5 text-sm text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
+          className="rounded px-3 py-1.5 text-sm transition-colors disabled:opacity-40"
+          style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--text-primary)' }}
         >
           Next →
         </button>
         <button
           onClick={replay}
-          className="ml-auto rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-300 transition-colors hover:bg-slate-700"
+          className="ml-auto rounded px-3 py-1.5 text-sm transition-colors"
+          style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
         >
           ↻ Replay
         </button>
@@ -134,10 +148,10 @@ function StepBody({ stepId, revealAnswer, setRevealAnswer, onLearnGrouping }: St
       return (
         <div className="space-y-3">
           <TruthTableMini spec={{ variables: ['A', 'B'], outputs: [0, 1, 0, 0], highlightMinterm: null }} />
-          <p className="text-sm text-slate-400">
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             A truth table is a list of all input combinations. Each row is one{' '}
-            <span className="text-white">input combination</span> paired with its{' '}
-            <span className="font-mono text-violet-300">output</span>.
+            <span style={{ color: 'var(--text-primary)' }}>input combination</span> paired with its{' '}
+            <span className="font-mono" style={{ color: 'var(--accent-primary)' }}>output</span>.
           </p>
         </div>
       )
@@ -210,13 +224,14 @@ function StepBody({ stepId, revealAnswer, setRevealAnswer, onLearnGrouping }: St
     case 'bridge':
       return (
         <div className="space-y-3">
-          <p className="text-sm text-slate-400">
-            Now you know <span className="text-white">why</span> we work with 1s for SOP and 0s for
-            POS. Next question: <span className="text-white">how</span> do we simplify them?
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Now you know <span style={{ color: 'var(--text-primary)' }}>why</span> we work with 1s for SOP and 0s for
+            POS. Next question: <span style={{ color: 'var(--text-primary)' }}>how</span> do we simplify them?
           </p>
           <button
             onClick={onLearnGrouping}
-            className="rounded bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-500"
+            className="rounded px-4 py-2 text-sm font-medium transition-colors"
+            style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--text-primary)' }}
           >
             Learn K-map Grouping →
           </button>

@@ -105,11 +105,9 @@ describe('DivisionTable', () => {
         />
       )
 
-      expect(screen.getByText('Dividend')).toBeInTheDocument()
-      expect(screen.getByText('Operation')).toBeInTheDocument()
-      expect(screen.getByText('Quotient')).toBeInTheDocument()
+      expect(screen.getByText('Number')).toBeInTheDocument()
       expect(screen.getByText('Remainder')).toBeInTheDocument()
-      expect(screen.getByText('Step')).toBeInTheDocument()
+      expect(screen.getByText('÷ 2')).toBeInTheDocument()
     })
 
     it('should render all division rows', () => {
@@ -229,11 +227,14 @@ describe('DivisionTable', () => {
           onSelectStep={() => {}}
           targetBase={2}
           decimalValue={200}
+          progressiveReveal
         />
       )
 
-      // Steps beyond current should be visible but dimmed
-      expect(container.textContent).toContain('25')
+      // With progressive reveal, only steps up to currentStep are shown
+      expect(container.textContent).toContain('200')
+      expect(container.textContent).toContain('100')
+      expect(container.textContent).not.toContain('50')
     })
   })
 

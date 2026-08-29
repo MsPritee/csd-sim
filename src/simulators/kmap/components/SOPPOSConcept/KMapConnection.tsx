@@ -32,8 +32,9 @@ export default function KMapConnection({
   const number = labelMinterm ?? focus
   const chip = mode === 'sop' ? `m${number}` : `M${number}`
 
-  const highlightMap = new Map<number, number>()
-  focusMinterms.forEach((minterm, index) => highlightMap.set(minterm, index % 4))
+  const groupOverlays = focusMinterms.length > 0
+    ? [{ minterms: focusMinterms, colorIndex: 0 }]
+    : []
   const tone = mode === 'sop' ? 'green' : 'red'
   const valueOf: CellValue = mode === 'sop' ? 1 : 0
 
@@ -83,7 +84,7 @@ export default function KMapConnection({
           onCellHover={() => {}}
           showMintermNumbers={false}
           showSOP={mode === 'sop'}
-          highlightMap={highlightMap}
+          groupOverlays={groupOverlays}
         />
       </motion.div>
     </div>

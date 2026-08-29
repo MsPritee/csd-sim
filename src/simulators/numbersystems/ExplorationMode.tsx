@@ -459,7 +459,7 @@ export function ExplorationMode({ onBackToHome }: ExplorationModeProps) {
         </Button>
       </nav>
       <div
-        className="min-h-screen p-6"
+        className="flex-1 p-6"
         style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
       >
         <div className="max-w-7xl mx-auto space-y-6">

@@ -33,7 +33,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
   render(): ReactNode {
     if (this.state.error) {
       return (
-        <main className="grid min-h-screen place-items-center bg-slate-950 text-slate-100">
+        <main className="grid flex-1 place-items-center bg-slate-950 text-slate-100">
           <div className="mx-auto max-w-md rounded-lg border border-slate-700 bg-slate-900 p-8 text-center">
             <p className="font-mono text-sm uppercase tracking-widest text-red-400">
               Something went wrong

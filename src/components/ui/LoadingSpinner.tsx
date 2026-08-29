@@ -5,6 +5,7 @@
 interface LoadingSpinnerProps {
   readonly size?: 'sm' | 'md' | 'lg'
   readonly className?: string
+  readonly centered?: boolean
 }
 
 const sizeStyles: Record<Exclude<LoadingSpinnerProps['size'], undefined>, string> = {
@@ -16,8 +17,20 @@ const sizeStyles: Record<Exclude<LoadingSpinnerProps['size'], undefined>, string
 export function LoadingSpinner({
   size = 'md',
   className = '',
+  centered = false,
 }: LoadingSpinnerProps) {
   const sizeClass = sizeStyles[size]
+
+  if (centered) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div
+          className={`animate-spin rounded-full ${sizeClass} ${className}`}
+          style={{ borderColor: 'var(--accent-primary)', borderTopColor: 'transparent' }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div

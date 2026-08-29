@@ -128,3 +128,145 @@ describe('minimizeCover', () => {
     expect(groups[0]!.length).toBe(4)
   })
 })
+
+describe('minimizeCover — exact minimum cover (regression)', () => {
+  function sopTruthTable(vars: readonly string[], groups: readonly (readonly number[])[]): string {
+    let tt = ''
+    for (let m = 0; m < 2 ** vars.length; m++) {
+      const bits = new Map<string, number>()
+      for (let i = 0; i < vars.length; i++) {
+        bits.set(vars[i]!, (m >> (vars.length - 1 - i)) & 1)
+      }
+      const hit = groups.some((cells) => cells.includes(m))
+      tt += hit ? '1' : '0'
+    }
+    return tt
+  }
+
+  function wantTT(ones: ReadonlySet<number>, n: number): string {
+    let s = ''
+    for (let m = 0; m < n; m++) s += ones.has(m) ? '1' : '0'
+    return s
+  }
+
+  /** Verify truth table only at required cell positions (don't-cares are wildcards). */
+  function expectTTMatches(
+    vars: readonly string[],
+    groups: readonly (readonly number[])[],
+    required: ReadonlySet<number>,
+    _n: number,
+  ) {
+    const tt = sopTruthTable(vars, groups)
+    for (const m of required) {
+      expect(tt[m]).toBe('1')
+    }
+  }
+
+  it('Σm(0,4,5,6,7) → 2 groups with 6+ total cells (not singleton)', () => {
+    const ones = new Set([0, 4, 5, 6, 7])
+    const groups = minimizeCover(kmap3, ones, ones)
+    const vars = ['A', 'B', 'C']
+    expect(sopTruthTable(vars, groups)).toBe(wantTT(ones, 8))
+    expect(groups.length).toBe(2)
+    const totalCells = groups.reduce((s, g) => s + g.length, 0)
+    expect(totalCells).toBeGreaterThanOrEqual(6)
+  })
+
+  it('Σm(0,1,4,5) → single quad (B=0)', () => {
+    const ones = new Set([0, 1, 4, 5])
+    const groups = minimizeCover(kmap3, ones, ones)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.length).toBe(4)
+  })
+
+  it('Σm(0,2,4,6) → single quad via wrap-around columns', () => {
+    const ones = new Set([0, 2, 4, 6])
+    const groups = minimizeCover(kmap3, ones, ones)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.length).toBe(4)
+    const vars = ['A', 'B', 'C']
+    expect(sopTruthTable(vars, groups)).toBe(wantTT(ones, 8))
+  })
+
+  it('Σm(4,5,6,7) → A (single quad, entire row)', () => {
+    const ones = new Set([4, 5, 6, 7])
+    const groups = minimizeCover(kmap3, ones, ones)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.length).toBe(4)
+  })
+
+  it('essential PI: Σm(0,1,2,4) uses overlapping groups to minimize', () => {
+    const ones = new Set([0, 1, 2, 4])
+    const groups = minimizeCover(kmap3, ones, ones)
+    const vars = ['A', 'B', 'C']
+    expect(sopTruthTable(vars, groups)).toBe(wantTT(ones, 8))
+    expect(groups.length).toBeLessThanOrEqual(3)
+  })
+
+  it('wrap-around corners: Σm(0,2,8,10) in 4-var', () => {
+    const ones = new Set([0, 2, 8, 10])
+    const groups = minimizeCover(kmap4, ones, ones)
+    const vars = ['A', 'B', 'C', 'D']
+    expect(sopTruthTable(vars, groups)).toBe(wantTT(ones, 16))
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.length).toBe(4)
+  })
+
+  it('all 1s → single group covering entire map', () => {
+    const all = new Set([0, 1, 2, 3, 4, 5, 6, 7])
+    const groups = minimizeCover(kmap3, all, all)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.length).toBe(8)
+  })
+
+  it('single minterm → single-cell group', () => {
+    const ones = new Set([3])
+    const groups = minimizeCover(kmap3, ones, ones)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.length).toBe(1)
+  })
+
+  it('dont-care: Σm(0,4,8,12) with dc(1,5,9,13) → single group using dc to grow', () => {
+    const ones = new Set([0, 4, 8, 12])
+    const dc = new Set([1, 5, 9, 13])
+    const eligible = new Set([...ones, ...dc])
+    const groups = minimizeCover(kmap4, eligible, ones)
+    const vars = ['A', 'B', 'C', 'D']
+    expectTTMatches(vars, groups, ones, 16)
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.length).toBeGreaterThanOrEqual(4)
+  })
+
+  it('dont-care enables larger group: Σm(0,2,8,10) with dc(1,3,9,11,14)', () => {
+    const ones = new Set([0, 2, 8, 10])
+    const dc = new Set([1, 3, 9, 11, 14])
+    const eligible = new Set([...ones, ...dc])
+    const groups = minimizeCover(kmap4, eligible, ones)
+    const vars = ['A', 'B', 'C', 'D']
+    expectTTMatches(vars, groups, ones, 16)
+    expect(groups.length).toBeLessThanOrEqual(2)
+  })
+
+  it('overlap case: Σm(0,1,2,3,4,5,6,7) in 4-var with some zeros', () => {
+    const ones = new Set([0, 1, 2, 3, 4, 5, 6])
+    const groups = minimizeCover(kmap4, ones, ones)
+    const vars = ['A', 'B', 'C', 'D']
+    expect(sopTruthTable(vars, groups)).toBe(wantTT(ones, 16))
+  })
+
+  it('Σm(0,1,2,5,6,7) → minimal cover with overlapping groups', () => {
+    const ones = new Set([0, 1, 2, 5, 6, 7])
+    const groups = minimizeCover(kmap3, ones, ones)
+    const vars = ['A', 'B', 'C']
+    expect(sopTruthTable(vars, groups)).toBe(wantTT(ones, 8))
+    expect(groups.length).toBeLessThanOrEqual(3)
+  })
+
+  it('Σm(1,3,4,5,6) → correct minimal SOP', () => {
+    const ones = new Set([1, 3, 4, 5, 6])
+    const groups = minimizeCover(kmap3, ones, ones)
+    const vars = ['A', 'B', 'C']
+    expect(sopTruthTable(vars, groups)).toBe(wantTT(ones, 8))
+    expect(groups.length).toBeLessThanOrEqual(3)
+  })
+})

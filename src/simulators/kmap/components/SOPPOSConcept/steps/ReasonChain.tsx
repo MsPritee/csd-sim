@@ -4,16 +4,16 @@ interface ReasonChainProps {
 }
 
 export default function ReasonChain({ labels, tone }: ReasonChainProps) {
-  const toneColor =
+  const toneStyle: React.CSSProperties =
     tone === 'green'
-      ? 'border-green-700/40 bg-green-900/10 text-green-300'
-      : 'border-red-800/60 bg-red-900/10 text-red-300'
+      ? { borderColor: 'var(--success-text)', backgroundColor: 'var(--success-bg)', color: 'var(--success-text)' }
+      : { borderColor: 'var(--error-text)', backgroundColor: 'var(--error-bg)', color: 'var(--error-text)' }
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm">
+    <div className="flex flex-wrap items-center gap-2" style={{ fontSize: '0.875rem' }}>
       {labels.map((label, i) => (
         <span key={i} className="flex items-center gap-2">
-          <span className={`rounded border px-2 py-1 font-medium ${toneColor}`}>{label}</span>
-          {i < labels.length - 1 && <span className="text-slate-500">↓</span>}
+          <span className="rounded px-2 py-1 font-medium" style={toneStyle}>{label}</span>
+          {i < labels.length - 1 && <span style={{ color: 'var(--text-muted)' }}>↓</span>}
         </span>
       ))}
     </div>

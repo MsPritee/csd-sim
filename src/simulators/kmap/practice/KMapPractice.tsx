@@ -20,7 +20,8 @@ export default function KMapPractice() {
       <div className="mx-auto max-w-4xl px-4 py-8">
         <button
           onClick={backHome}
-          className="mb-4 font-medium text-violet-400 hover:text-violet-300"
+          className="mb-4 font-medium"
+          style={{ color: 'var(--accent-primary)' }}
         >
           ← Practice home
         </button>

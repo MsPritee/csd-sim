@@ -181,12 +181,14 @@ function GlyphButton({
   onClick,
   testid,
   title,
+  isMobile = false,
 }: {
   type: string
   active: boolean
   onClick: () => void
   testid: string
   title: string
+  isMobile?: boolean
 }) {
   const attrs = libraryAttrs(type)
   const counts = portCounts({ type, attrs, id: '', x: 0, y: 0, rotation: 0 })
@@ -196,13 +198,19 @@ function GlyphButton({
       onClick={onClick}
       data-testid={testid}
       title={title}
-      className="rounded-lg border p-0.5 transition-colors"
+      className={`rounded-lg border transition-colors ${isMobile ? 'p-1' : 'p-0.5'}`}
       style={{
         backgroundColor: active ? 'var(--accent-bg)' : 'var(--bg-card)',
         borderColor: active ? 'var(--accent-primary)' : 'var(--border-color)',
+        minWidth: isMobile ? '48px' : 'auto',
+        minHeight: isMobile ? '48px' : 'auto',
       }}
     >
-      <svg viewBox="0 0 140 100" className="h-8 w-12" data-testid={`palette-glyph-${type.toLowerCase()}`}>
+      <svg 
+        viewBox="0 0 140 100" 
+        className={isMobile ? "h-10 w-14" : "h-8 w-12"} 
+        data-testid={`palette-glyph-${type.toLowerCase()}`}
+      >
         {isGateTypeName(type) ? (
           <GateGlyph gate={type as GateType} inputs={[]} output={undefined} />
         ) : (
@@ -220,26 +228,30 @@ function ToolIconButton({
   label,
   testid,
   glyph,
+  isMobile = false,
 }: {
   active: boolean
   onClick: () => void
   label: string
   testid: string
   glyph: React.ReactNode
+  isMobile?: boolean
 }) {
   return (
     <button
       onClick={onClick}
       data-testid={testid}
       title={label}
-      className="flex h-10 w-10 flex-col items-center justify-center gap-0 rounded-lg border transition-colors"
+      className={`flex flex-col items-center justify-center gap-0 rounded-lg border transition-colors ${isMobile ? 'h-12 w-12' : 'h-10 w-10'}`}
       style={{
         backgroundColor: active ? 'var(--accent-bg)' : 'var(--bg-card)',
         borderColor: active ? 'var(--accent-primary)' : 'var(--border-color)',
         color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
+        minWidth: isMobile ? '48px' : '40px',
+        minHeight: isMobile ? '48px' : '40px',
       }}
     >
-      <span className="text-lg leading-none">{glyph}</span>
+      <span className={`${isMobile ? 'text-xl' : 'text-lg'} leading-none`}>{glyph}</span>
     </button>
   )
 }
@@ -367,6 +379,30 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
   } = useCircuitStore()
 
   const { theme, toggleTheme } = useTheme()
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [attributesCollapsed, setAttributesCollapsed] = useState(false)
+  
+  // Responsive state
+  const [isMobile, setIsMobile] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [mobileToolbarVisible, setMobileToolbarVisible] = useState(true)
+  
+  // Responsive detection
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth
+      setIsMobile(width < 768)
+      
+      // Auto-collapse sidebar on mobile
+      if (width < 768 && !sidebarCollapsed) {
+        setSidebarCollapsed(true)
+      }
+    }
+    
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [sidebarCollapsed])
 
   const circuit = useMemo(
     () => tabs.find((t) => t.id === activeTabId)?.circuit ?? tabs[0]?.circuit ?? { components: [], wires: [] },
@@ -689,7 +725,7 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
   )
 
   return (
-    <main className="min-h-screen flex flex-col relative" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+    <main className="flex-1 flex flex-col relative" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <header className="flex items-center justify-between gap-3 px-4 py-3 border-b" style={{ borderColor: 'var(--border-color)' }}>
         <button
           onClick={onBackToHome}
@@ -785,50 +821,84 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
         </div>
       </header>
 
-      {/* Logisim-style top icon toolbar: tools + gate/library shortcuts */}
+      {/* Logisim-style top icon toolbar: tools + gate/library shortcuts - responsive */}
       <div
-        className="flex items-center gap-1 overflow-x-auto border-b px-2 py-1"
+        className={`flex items-center gap-1 overflow-x-auto border-b ${isMobile ? 'px-1 py-2' : 'px-2 py-1'}`}
         style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
         data-testid="toolbar"
       >
-        {paletteActions.map((a) => (
-          <ToolIconButton
-            key={a.testid}
-            active={isActive(tool, a.tool)}
-            onClick={() => {
-              setTool(a.tool)
-              setGateToAdd(null)
-            }}
-            label={a.label}
-            testid={a.testid}
-            glyph={<ToolGlyph tool={typeof a.tool === 'string' ? a.tool : ''} />}
-          />
-        ))}
-        <div className="mx-1 h-8 w-px shrink-0" style={{ backgroundColor: 'var(--border-color)' }} />
-        {GATE_TYPES.map((g) => (
-          <GlyphButton
-            key={g}
-            type={g}
-            active={gateToAdd === g && tool === 'add-gate'}
-            onClick={() => gateTool(g)}
-            testid={`palette-${g.toLowerCase()}`}
-            title={g}
-          />
-        ))}
-        <div className="mx-1 h-8 w-px shrink-0" style={{ backgroundColor: 'var(--border-color)' }} />
-        {LIBRARY_ITEMS.map((it) => (
-          <GlyphButton
-            key={it.type}
-            type={it.type}
-            active={tool === `add-${it.type}`}
-            onClick={() => {
-              setTool(`add-${it.type}` as Tool)
-              setGateToAdd(null)
-            }}
-            testid={`palette-${it.type}`}
-            title={it.aria}
-          />
-        ))}
+        {/* On mobile, show only essential tools in top bar */}
+        {isMobile ? (
+          <>
+            {paletteActions.slice(0, 4).map((a) => (
+              <ToolIconButton
+                key={a.testid}
+                active={isActive(tool, a.tool)}
+                onClick={() => {
+                  setTool(a.tool)
+                  setGateToAdd(null)
+                }}
+                label={a.label}
+                testid={a.testid}
+                glyph={<ToolGlyph tool={typeof a.tool === 'string' ? a.tool : ''} />}
+                isMobile={true}
+              />
+            ))}
+            <div className="mx-1 h-8 w-px shrink-0" style={{ backgroundColor: 'var(--border-color)' }} />
+            {GATE_TYPES.slice(0, 4).map((g) => (
+              <GlyphButton
+                key={g}
+                type={g}
+                active={gateToAdd === g && tool === 'add-gate'}
+                onClick={() => gateTool(g)}
+                testid={`palette-${g.toLowerCase()}`}
+                title={g}
+                isMobile={true}
+              />
+            ))}
+          </>
+        ) : (
+          <>
+            {paletteActions.map((a) => (
+              <ToolIconButton
+                key={a.testid}
+                active={isActive(tool, a.tool)}
+                onClick={() => {
+                  setTool(a.tool)
+                  setGateToAdd(null)
+                }}
+                label={a.label}
+                testid={a.testid}
+                glyph={<ToolGlyph tool={typeof a.tool === 'string' ? a.tool : ''} />}
+              />
+            ))}
+            <div className="mx-1 h-8 w-px shrink-0" style={{ backgroundColor: 'var(--border-color)' }} />
+            {GATE_TYPES.map((g) => (
+              <GlyphButton
+                key={g}
+                type={g}
+                active={gateToAdd === g && tool === 'add-gate'}
+                onClick={() => gateTool(g)}
+                testid={`palette-${g.toLowerCase()}`}
+                title={g}
+              />
+            ))}
+            <div className="mx-1 h-8 w-px shrink-0" style={{ backgroundColor: 'var(--border-color)' }} />
+            {LIBRARY_ITEMS.map((it) => (
+              <GlyphButton
+                key={it.type}
+                type={it.type}
+                active={tool === `add-${it.type}`}
+                onClick={() => {
+                  setTool(`add-${it.type}` as Tool)
+                  setGateToAdd(null)
+                }}
+                testid={`palette-${it.type}`}
+                title={it.aria}
+              />
+            ))}
+          </>
+        )}
       </div>
 
       {/* hidden import target */}
@@ -853,24 +923,72 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile sidebar toggle button */}
+        {isMobile && (
+          <button
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            className="absolute top-4 left-4 z-50 p-2 rounded-lg border shadow-lg"
+            style={{ 
+              backgroundColor: 'var(--bg-card)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)' 
+            }}
+            aria-label="Toggle sidebar"
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {mobileSidebarOpen ? (
+                <path d="M18 6L6 18M6 6l12 12" />
+              ) : (
+                <>
+                  <path d="M3 12h18M3 6h18M3 18h18" />
+                </>
+              )}
+            </svg>
+          </button>
+        )}
+
         {/* Left palette: Explorer + tools */}
         <aside
-          className="w-52 shrink-0 border-r p-3 flex flex-col gap-4 overflow-y-auto"
-          style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+          className={`border-r p-3 flex flex-col gap-4 overflow-y-auto transition-all duration-300 ${
+            isMobile 
+              ? `fixed inset-y-0 left-0 z-40 w-80 transform ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
+              : sidebarCollapsed 
+                ? 'w-0 overflow-hidden p-0 border-0' 
+                : 'w-52'
+          }`}
+          style={{ 
+            borderColor: 'var(--border-color)', 
+            backgroundColor: 'var(--bg-secondary)',
+            marginTop: isMobile ? '0' : '0'
+          }}
         >
           <Section title="Explorer">
             <div className="flex flex-col gap-1">
               {tabs.map((t) => (
                 <div key={t.id} className="flex items-center gap-1">
                   <button
-                    onClick={() => switchTab(t.id)}
+                    onClick={() => {
+                      switchTab(t.id)
+                      if (isMobile) setMobileSidebarOpen(false)
+                    }}
                     data-testid={`tab-${t.id}`}
-                    className="flex-1 rounded border px-2 py-1 text-left text-xs"
+                    className={`flex-1 rounded border text-left text-xs ${isMobile ? 'px-3 py-2' : 'px-2 py-1'}`}
                     style={{
                       backgroundColor: t.id === activeTabId ? 'var(--accent-bg)' : 'var(--bg-card)',
                       borderColor: t.id === activeTabId ? 'var(--accent-primary)' : 'var(--border-color)',
                       color: 'var(--text-primary)',
+                      minHeight: isMobile ? '44px' : 'auto',
                     }}
                   >
                     {t.name}
@@ -879,8 +997,8 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
                     <button
                       onClick={() => removeTab(t.id)}
                       data-testid={`tab-close-${t.id}`}
-                      className="rounded px-1 text-xs"
-                      style={{ color: 'var(--text-muted)' }}
+                      className={`rounded text-xs ${isMobile ? 'px-2 py-2' : 'px-1'}`}
+                      style={{ color: 'var(--text-muted)', minHeight: isMobile ? '44px' : 'auto' }}
                       title="Remove circuit"
                     >
                       ×
@@ -889,10 +1007,17 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
                 </div>
               ))}
               <button
-                onClick={() => createCircuit(`circuit-${tabs.length}`)}
+                onClick={() => {
+                  createCircuit(`circuit-${tabs.length}`)
+                  if (isMobile) setMobileSidebarOpen(false)
+                }}
                 data-testid="new-circuit"
-                className="rounded border border-dashed px-2 py-1 text-xs"
-                style={{ borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}
+                className={`rounded border border-dashed text-xs ${isMobile ? 'px-3 py-2' : 'px-2 py-1'}`}
+                style={{ 
+                  borderColor: 'var(--accent-primary)', 
+                  color: 'var(--accent-primary)',
+                  minHeight: isMobile ? '44px' : 'auto'
+                }}
               >
                 + New circuit
               </button>
@@ -904,11 +1029,11 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
               {EXPLORER_ORDER.map((lib) => (
                 <details key={lib} open className="group">
                   <summary
-                    className="flex cursor-pointer items-center gap-1 rounded px-1.5 py-1 text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-black/5"
-                    style={{ color: 'var(--text-secondary)' }}
+                    className={`flex cursor-pointer items-center gap-1 rounded font-semibold uppercase tracking-wider transition-colors hover:bg-black/5 ${isMobile ? 'px-2 py-2 text-xs' : 'px-1.5 py-1 text-xs'}`}
+                    style={{ color: 'var(--text-secondary)', minHeight: isMobile ? '44px' : 'auto' }}
                     data-testid={`library-${lib.toLowerCase()}`}
                   >
-                    <span className="text-[10px] leading-none transition-transform group-open:rotate-90">▸</span>
+                    <span className={`leading-none transition-transform group-open:rotate-90 ${isMobile ? 'text-xs' : 'text-[10px]'}`}>▸</span>
                     {lib}
                   </summary>
                   <div className="ml-2 mt-1 flex flex-col gap-0.5 border-l pl-1.5" style={{ borderColor: 'var(--border-color)' }}>
@@ -922,13 +1047,17 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
                       return (
                         <button
                           key={it.type}
-                          onClick={() => selectExplorerItem(it.type)}
+                          onClick={() => {
+                            selectExplorerItem(it.type)
+                            if (isMobile) setMobileSidebarOpen(false)
+                          }}
                           data-testid={`explorer-${it.type.toLowerCase()}`}
                           title={it.aria}
-                          className="rounded px-1.5 py-1 text-left text-xs transition-colors"
+                          className={`rounded text-left text-xs transition-colors ${isMobile ? 'px-2 py-2' : 'px-1.5 py-1'}`}
                           style={{
                             backgroundColor: active ? 'var(--accent-bg)' : 'transparent',
                             color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                            minHeight: isMobile ? '44px' : 'auto',
                           }}
                         >
                           {it.aria}
@@ -954,13 +1083,15 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
                     onClick={() => {
                       setTool({ type: 'add-subcircuit', libraryId: s.id })
                       setGateToAdd(null)
+                      if (isMobile) setMobileSidebarOpen(false)
                     }}
                     data-testid={`subcircuit-${s.name.toLowerCase().replace(/\s+/g, '-')}`}
-                    className="rounded-lg border px-2 py-1.5 text-xs"
+                    className={`rounded-lg border text-xs ${isMobile ? 'px-3 py-2' : 'px-2 py-1.5'}`}
                     style={{
                       backgroundColor: toolIsSub(tool) && tool.libraryId === s.id ? 'var(--accent-bg)' : 'var(--bg-card)',
                       borderColor: toolIsSub(tool) && tool.libraryId === s.id ? 'var(--accent-primary)' : 'var(--border-color)',
                       color: 'var(--text-secondary)',
+                      minHeight: isMobile ? '44px' : 'auto',
                     }}
                   >
                     {s.name}
@@ -973,8 +1104,13 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
                 value={subName}
                 onChange={(e) => setSubName(e.target.value)}
                 placeholder="Name circuit…"
-                className="rounded-lg border px-2 py-1 text-xs"
-                style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                className={`rounded-lg border text-xs ${isMobile ? 'px-3 py-2' : 'px-2 py-1'}`}
+                style={{ 
+                  backgroundColor: 'var(--bg-tertiary)', 
+                  borderColor: 'var(--border-color)', 
+                  color: 'var(--text-primary)',
+                  minHeight: isMobile ? '44px' : 'auto'
+                }}
                 data-testid="subcircuit-name"
               />
               <button
@@ -985,8 +1121,12 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
                   }
                 }}
                 disabled={!subName.trim()}
-                className="rounded-lg border px-2 py-1.5 text-xs transition-colors disabled:opacity-50"
-                style={{ borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}
+                className={`rounded-lg border text-xs transition-colors disabled:opacity-50 ${isMobile ? 'px-3 py-2' : 'px-2 py-1.5'}`}
+                style={{ 
+                  borderColor: 'var(--accent-primary)', 
+                  color: 'var(--accent-primary)',
+                  minHeight: isMobile ? '44px' : 'auto'
+                }}
                 data-testid="save-subcircuit"
               >
                 Save as subcircuit
@@ -1009,21 +1149,31 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
           </Section>
         </aside>
 
+        {/* Mobile sidebar overlay */}
+        {isMobile && mobileSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-30"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* Canvas + tabs */}
         <div className="flex-1 relative overflow-hidden" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-          {/* Tabs bar */}
-          <div className="flex items-center gap-1 border-b px-2 py-1" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}>
+          {/* Tabs bar - responsive */}
+          <div className={`flex items-center gap-1 border-b ${isMobile ? 'px-1 py-2 overflow-x-auto' : 'px-2 py-1'}`} style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}>
             {tabs.map((t) => (
               <button
                 key={t.id}
                 onClick={() => switchTab(t.id)}
                 data-testid={`canvas-tab-${t.id}`}
-                className="rounded-t px-3 py-1 text-xs transition-colors"
+                className={`rounded-t text-xs transition-colors whitespace-nowrap ${isMobile ? 'px-2 py-1.5' : 'px-3 py-1'}`}
                 style={{
                   backgroundColor: t.id === activeTabId ? 'var(--bg-card)' : 'transparent',
                   borderColor: 'var(--border-color)',
                   color: t.id === activeTabId ? 'var(--accent-primary)' : 'var(--text-secondary)',
                   borderBottom: t.id === activeTabId ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                  minWidth: isMobile ? 'auto' : '80px'
                 }}
               >
                 {t.name}
@@ -1033,13 +1183,37 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
 
           <svg
             ref={svgRef}
-            className="absolute inset-0 h-full w-full cursor-crosshair"
+            className="absolute inset-0 h-full w-full cursor-crosshair touch-none"
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
             onWheel={handleWheel}
             onClick={handleCanvasClick}
+            onTouchStart={(e) => {
+              // Basic touch support for mobile
+              const touch = e.touches[0]
+              if (touch) {
+                handleCanvasMouseDown({
+                  button: 0,
+                  clientX: touch.clientX,
+                  clientY: touch.clientY,
+                  preventDefault: () => e.preventDefault(),
+                  stopPropagation: () => e.stopPropagation()
+                } as any)
+              }
+            }}
+            onTouchMove={(e) => {
+              const touch = e.touches[0]
+              if (touch) {
+                handleMouseMove({
+                  clientX: touch.clientX,
+                  clientY: touch.clientY,
+                  preventDefault: () => e.preventDefault()
+                } as any)
+              }
+            }}
+            onTouchEnd={handleMouseUp}
             data-testid="canvas"
           >
             <defs>
@@ -1170,33 +1344,89 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
             </g>
           </svg>
 
-          {/* zoom controls */}
-          <div className="absolute bottom-4 right-4 flex flex-col gap-1">
+          {/* zoom controls - responsive positioning and sizing */}
+          <div className={`flex gap-1 ${isMobile ? 'absolute bottom-20 left-1/2 -translate-x-1/2 flex-row' : 'absolute bottom-4 right-4 flex-col'}`}>
             <button
               onClick={() => setView({ zoom: Math.min(2.5, zoom * 1.25) })}
-              className="rounded-lg border w-9 h-9 text-lg leading-none"
+              className={`rounded-lg border text-lg leading-none ${isMobile ? 'w-12 h-12 text-xl' : 'w-9 h-9'}`}
               style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
               data-testid="zoom-in"
+              aria-label="Zoom in"
             >
               +
             </button>
             <button
               onClick={() => setView({ zoom: Math.max(0.4, zoom / 1.25) })}
-              className="rounded-lg border w-9 h-9 text-lg leading-none"
+              className={`rounded-lg border text-lg leading-none ${isMobile ? 'w-12 h-12 text-xl' : 'w-9 h-9'}`}
               style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
               data-testid="zoom-out"
+              aria-label="Zoom out"
             >
               −
             </button>
             <button
               onClick={() => setView({ panX: 40, panY: 40, zoom: 1 })}
-              className="rounded-lg border w-9 h-9 text-sm leading-none"
+              className={`rounded-lg border text-sm leading-none ${isMobile ? 'w-12 h-12 text-xl' : 'w-9 h-9'}`}
               style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
               data-testid="zoom-reset"
+              aria-label="Reset zoom"
             >
               ⌂
             </button>
           </div>
+
+          {/* Mobile toolbar for quick tool access */}
+          {isMobile && mobileToolbarVisible && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 rounded-xl border shadow-lg overflow-x-auto max-w-[90vw]"
+                 style={{ 
+                   backgroundColor: 'var(--bg-card)', 
+                   borderColor: 'var(--border-color)' 
+                 }}>
+              {paletteActions.slice(0, 4).map((a) => (
+                <ToolIconButton
+                  key={a.testid}
+                  active={isActive(tool, a.tool)}
+                  onClick={() => {
+                    setTool(a.tool)
+                    setGateToAdd(null)
+                  }}
+                  label={a.label}
+                  testid={a.testid}
+                  glyph={<ToolGlyph tool={typeof a.tool === 'string' ? a.tool : ''} />}
+                  isMobile={true}
+                />
+              ))}
+              <div className="w-px h-8 mx-1" style={{ backgroundColor: 'var(--border-color)' }} />
+              <button
+                onClick={() => setMobileToolbarVisible(false)}
+                className="flex h-12 w-12 flex-col items-center justify-center gap-0 rounded-lg border transition-colors"
+                style={{
+                  backgroundColor: 'var(--bg-card)',
+                  borderColor: 'var(--border-color)',
+                  color: 'var(--text-secondary)',
+                }}
+                aria-label="Hide toolbar"
+              >
+                <span className="text-xl leading-none">▼</span>
+              </button>
+            </div>
+          )}
+
+          {/* Mobile toolbar toggle when hidden */}
+          {isMobile && !mobileToolbarVisible && (
+            <button
+              onClick={() => setMobileToolbarVisible(true)}
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center justify-center w-12 h-12 rounded-full border shadow-lg"
+              style={{ 
+                backgroundColor: 'var(--bg-card)', 
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-secondary)' 
+              }}
+              aria-label="Show toolbar"
+            >
+              <span className="text-xl">▲</span>
+            </button>
+          )}
 
           {/* inline rename / text editor */}
           {editing &&
@@ -1247,21 +1477,69 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
           )}
         </div>
 
-        {/* Right palette: attribute table */}
+        {/* Right palette: attribute table - responsive */}
         <aside
-          className="w-52 shrink-0 border-l p-3 overflow-y-auto"
+          className={`border-l p-3 overflow-y-auto transition-all duration-300 ${
+            isMobile 
+              ? `fixed inset-y-0 right-0 z-40 w-80 transform ${attributesCollapsed ? 'translate-x-full' : 'translate-x-0'}`
+              : attributesCollapsed 
+                ? 'w-0 overflow-hidden p-0 border-0' 
+                : 'w-52'
+          }`}
           style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
         >
-          <Section title="Attributes">
-            {selectedComponent ? (
-              <AttributeTable component={selectedComponent} />
-            ) : (
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Select a component to edit its attributes.
-              </p>
+          <div className="flex items-center justify-between mb-3">
+            <Section title="Attributes">
+              <span></span>
+            </Section>
+            {isMobile && (
+              <button
+                onClick={() => setAttributesCollapsed(true)}
+                className="p-1 rounded hover:bg-black/5"
+                style={{ color: 'var(--text-secondary)' }}
+                aria-label="Close attributes panel"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
             )}
-          </Section>
+          </div>
+          {selectedComponent ? (
+            <AttributeTable component={selectedComponent} />
+          ) : (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Select a component to edit its attributes.
+            </p>
+          )}
         </aside>
+
+        {/* Mobile attributes panel toggle */}
+        {isMobile && selectedComponent && attributesCollapsed && (
+          <button
+            onClick={() => setAttributesCollapsed(false)}
+            className="absolute top-4 right-4 z-50 p-2 rounded-lg border shadow-lg"
+            style={{ 
+              backgroundColor: 'var(--bg-card)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)' 
+            }}
+            aria-label="Show attributes"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 20v-6M6 20V10M18 20V4" />
+            </svg>
+          </button>
+        )}
+
+        {/* Mobile attributes overlay */}
+        {isMobile && !attributesCollapsed && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-30"
+            onClick={() => setAttributesCollapsed(true)}
+            aria-hidden="true"
+          />
+        )}
       </div>
     </main>
   )
