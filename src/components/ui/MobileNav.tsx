@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 
 interface NavItem {
@@ -99,23 +100,24 @@ export function MobileNav({
       </button>
 
       {/* Backdrop overlay */}
-      {isOpen && (
+      {isOpen && createPortal(
         <div
-          className="fixed inset-0 z-40 transition-opacity duration-300"
-          style={{ 
+          className="fixed inset-0 z-[95] transition-opacity duration-300"
+          style={{
             backgroundColor: 'rgba(2, 6, 23, 0.6)',
             opacity: isOpen ? '1' : '0',
           }}
           onClick={() => setIsOpen(false)}
           aria-hidden="true"
-        />
+        />,
+        document.body
       )}
 
       {/* Fixed Right Sidebar */}
-      {isOpen && (
+      {isOpen && createPortal(
         <div
           role="menu"
-          className="fixed top-0 right-0 h-screen w-72 sm:w-64 z-[90] flex flex-col overflow-hidden shadow-2xl"
+          className="fixed top-0 right-0 h-screen w-72 sm:w-64 z-[100] flex flex-col overflow-hidden shadow-2xl"
           style={{
             backgroundColor: 'var(--bg-card)',
             borderColor: 'var(--border-color)',
@@ -187,7 +189,7 @@ export function MobileNav({
                       setIsOpen(false)
                     }
                   }}
-                  className={`group flex w-full items-center gap-2 sm:gap-2.5 rounded-xl px-2.5 sm:px-3 py-2 sm:py-2.5 text-left text-xs sm:text-sm font-medium transition-all-smooth active:scale-[0.98] ${
+                  className={`group flex w-full items-center gap-1.5 sm:gap-2 rounded-xl px-2 sm:px-2.5 py-1.5 sm:py-2 text-left text-xs sm:text-sm font-medium transition-all-smooth active:scale-[0.98] ${
                     item.active ? 'font-semibold' : ''
                   }`}
                   style={{
@@ -200,7 +202,7 @@ export function MobileNav({
                 >
                   {item.icon && (
                     <span
-                      className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-xl transition-colors"
+                      className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-xl transition-colors"
                       style={{
                         backgroundColor: item.active
                           ? 'var(--accent-primary)'
@@ -256,7 +258,7 @@ export function MobileNav({
                             child.onClick?.()
                             setIsOpen(false)
                           }}
-                          className={`group flex w-full items-center gap-2 rounded-lg px-2.5 sm:px-3 py-1.5 sm:py-2 text-left text-xs sm:text-sm font-medium transition-all-smooth active:scale-[0.98] ${
+                          className={`group flex w-full items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1 sm:py-1.5 text-left text-xs sm:text-sm font-medium transition-all-smooth active:scale-[0.98] ${
                             child.active ? 'font-semibold' : ''
                           }`}
                           style={{
@@ -301,7 +303,8 @@ export function MobileNav({
               }}
             />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </nav>
   )
