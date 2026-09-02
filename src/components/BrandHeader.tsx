@@ -9,6 +9,48 @@ type View = 'home' | 'kmap' | 'practice' | 'gates' | 'circuit' | 'numbersystems'
 const ERP_URL = 'https://chalkandduster-kbb.web.app/labs'
 const ERP_HOME = 'https://chalkandduster-kbb.web.app'
 
+const navIcons = {
+  home: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  ),
+  kmap: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 9h18M9 3v18" />
+    </svg>
+  ),
+  gates: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 12h8M12 12h8" />
+      <ellipse cx="12" cy="12" rx="3" ry="6" />
+    </svg>
+  ),
+  circuit: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="2" />
+      <path d="M6 12h4M14 12h4M10 8v8" />
+      <circle cx="10" cy="12" r="2" />
+    </svg>
+  ),
+  numbersystems: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 12h8M12 12h8M12 8v8" />
+      <circle cx="8" cy="12" r="2" />
+      <circle cx="16" cy="12" r="2" />
+    </svg>
+  ),
+  faq: (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  ),
+}
+
 interface BrandHeaderProps {
   currentView?: View
   onViewChange?: React.Dispatch<React.SetStateAction<View>>
@@ -18,17 +60,31 @@ const BrandHeader = memo(function BrandHeader({ currentView = 'home', onViewChan
   const { theme, toggleTheme } = useTheme()
 
   const navItems = useMemo(() => [
-    { id: 'home', label: 'Home', onClick: () => onViewChange?.('home' as View), active: currentView === 'home' },
-    { id: 'kmap', label: 'K-Map', onClick: () => onViewChange?.('kmap' as View), active: currentView === 'kmap' },
-    { id: 'gates', label: 'Logic Gates', onClick: () => onViewChange?.('gates' as View), active: currentView === 'gates' },
-    { id: 'circuit', label: 'Circuit Designer', onClick: () => onViewChange?.('circuit' as View), active: currentView === 'circuit' },
-    { id: 'numbersystems', label: 'Number Systems', onClick: () => onViewChange?.('numbersystems' as View), active: currentView === 'numbersystems' },
-    { id: 'faq', label: 'FAQ', onClick: () => onViewChange?.('faq' as View), active: currentView === 'faq' },
+    { id: 'home', label: 'Home', icon: navIcons.home, onClick: () => onViewChange?.('home' as View), active: currentView === 'home' },
+    { 
+      id: 'kmap', 
+      label: 'K-Map', 
+      icon: navIcons.kmap, 
+      onClick: () => onViewChange?.('kmap' as View), 
+      active: currentView === 'kmap' || currentView === 'practice',
+      children: [
+        { id: 'kmap-main', label: 'K-Map Simulator', onClick: () => onViewChange?.('kmap' as View), active: currentView === 'kmap' },
+        { id: 'kmap-practice', label: 'Practice Mode', onClick: () => onViewChange?.('practice' as View), active: currentView === 'practice' },
+      ]
+    },
+    { id: 'gates', label: 'Logic Gates', icon: navIcons.gates, onClick: () => onViewChange?.('gates' as View), active: currentView === 'gates' },
+    { id: 'circuit', label: 'Circuit Designer', icon: navIcons.circuit, onClick: () => onViewChange?.('circuit' as View), active: currentView === 'circuit' },
+    { id: 'numbersystems', label: 'Number Systems', icon: navIcons.numbersystems, onClick: () => onViewChange?.('numbersystems' as View), active: currentView === 'numbersystems' },
+    { id: 'faq', label: 'FAQ', icon: navIcons.faq, onClick: () => onViewChange?.('faq' as View), active: currentView === 'faq' },
   ], [currentView, onViewChange])
 
   const handleThemeToggle = useCallback(() => {
     toggleTheme()
   }, [toggleTheme])
+
+  const goHome = useCallback(() => {
+    onViewChange?.('home' as View)
+  }, [onViewChange])
 
   return (
     <header className="brand-header sticky top-0 z-50 border-b backdrop-blur-md">
@@ -52,52 +108,23 @@ const BrandHeader = memo(function BrandHeader({ currentView = 'home', onViewChan
         </div>
 
         <div className="flex flex-col items-center gap-0.5">
-          <span className="brand-header-title truncate whitespace-nowrap text-base font-bold tracking-tight sm:text-lg">
+          <button
+            type="button"
+            onClick={goHome}
+            aria-label="DigiWorld - go to home page"
+            title="Go to Home"
+            className="brand-header-title truncate whitespace-nowrap text-base font-bold tracking-tight transition-transform sm:text-lg hover:scale-[1.03] active:scale-95"
+          >
             DigiWorld
-          </span>
+          </button>
         </div>
 
         <div className="min-w-0 flex items-center justify-end gap-1 sm:gap-2">
           {/* Mobile Navigation */}
-          <div className="flex lg:hidden items-center">
-            <MobileNav
-              items={navItems}
-              breakpoint="lg"
-              className="mr-1"
-            />
-          </div>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1 mr-2">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={item.onClick}
-                className={`px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                  item.active ? 'font-semibold' : ''
-                }`}
-                style={{
-                  backgroundColor: item.active ? 'var(--accent-bg)' : 'transparent',
-                  color: item.active ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  border: item.active ? '1px solid var(--accent-primary)' : '1px solid transparent',
-                }}
-                onMouseEnter={(e) => {
-                  if (!item.active) {
-                    e.currentTarget.style.color = 'var(--text-primary)'
-                    e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!item.active) {
-                    e.currentTarget.style.color = 'var(--text-secondary)'
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                  }
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
+          <MobileNav
+            items={navItems}
+            className="mr-1"
+          />
 
           <button
             onClick={handleThemeToggle}

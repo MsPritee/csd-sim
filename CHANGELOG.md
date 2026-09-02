@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [Refactored] - 2026-09-02 20:46
+- **Component**: Navigation System Unification
+- **Description**: Unified the navigation system to use a single MobileNav component across all screen sizes. Removed MobileBottomNav component and its usage from main.tsx, removed ResponsiveSidebar component (unused), eliminated desktop navigation from BrandHeader, updated MobileNav to show hamburger button on all screen sizes (removed breakpoint logic), removed body scroll prevention dependency on mobile state, cleaned up component exports in ui/index.ts.
+- **Reasoning**: The previous navigation system had three different navigation components (MobileNav, MobileBottomNav, ResponsiveSidebar) with inconsistent behavior across screen sizes. This created confusion for users with overlapping navigation patterns (hamburger + bottom nav on mobile) and cognitive overload. A unified navigation system provides consistent user experience across all devices, reduces component redundancy, and simplifies maintenance. The hamburger/sidebar pattern is now the single, consistent navigation method for all screen sizes.
+- **Impact**: Navigation is now consistent across all screen sizes - hamburger button and sidebar are the only navigation pattern. Removed component redundancy (MobileBottomNav, ResponsiveSidebar, desktop nav). Simplified codebase with clearer component responsibilities. Improved user experience with no navigation confusion. Footer z-index conflicts resolved (sidebar z-[90] > footer z-80). All navigation functionality preserved in unified component.
+- **Files Modified**:
+  - `src/main.tsx` - Removed MobileBottomNav import and usage, removed bottom nav items, removed padding-bottom for bottom nav, simplified MainApp component
+  - `src/components/ui/MobileNav.tsx` - Removed breakpoint prop and logic, removed isMobile state, removed desktop navigation rendering, removed mobile state dependency in body scroll prevention, removed conditional rendering based on breakpoint, simplified to always show hamburger button and sidebar
+  - `src/components/BrandHeader.tsx` - Removed breakpoint prop from MobileNav, removed desktop navigation section, simplified to only use MobileNav
+  - `src/components/ui/index.ts` - Removed exports for MobileBottomNav and ResponsiveSidebar
+  - `trash/src/components/ui/ResponsiveSidebar.tsx` - Moved unused component to trash folder
+
+### [Fixed] - 2026-08-30 19:05
+- **Component**: K-Map Simulator & MobileNav Build Repair
+- **Description**: Restored `KMapSimulator.tsx` to its committed, build-compatible version (an uncommitted rewrite left it out of sync with `App.tsx`, `SimulatorHeader`, and `KMapGrid`, causing the vite parse/type errors and a broken build). Fixed a duplicate `className` attribute in the MobileNav expand chevron that failed the TypeScript JSX check.
+- **Reasoning**: The K-Map simulator rewrite resolved to a state that no longer compiled against the rest of the repo (missing `onBackToHome`/`onOpenPractice` props consumed by `App.tsx`, and a `KMapGrid` usage missing `onCellInfo`/`showSOP`). The duplicate `className` on the MobileNav chevron was a JSX syntax error. Both blocked the production build.
+- **Impact**: `npm run build` passes again (no TypeScript or transform errors). All other in-progress user changes to MobileNav/BrandHeader (submenu support) are preserved and still compile. The K-Map simulator returns to its previously committed, working state.
+- **Files Modified**:
+  - `src/simulators/kmap/KMapSimulator.tsx` - Restored to committed version
+  - `src/components/ui/MobileNav.tsx` - Fixed duplicate `className` attribute on the expand chevron
+
+### [Updated] - 2026-08-30 18:50
+- **Component**: Mobile Navigation Submenu Support
+- **Description**: Added submenu support to MobileNav component and implemented K-Map submenu with "K-Map Simulator" and "Practice Mode" options. Updated NavItem interface to support nested children, added expand/collapse functionality with animated chevron, styled submenu items with indentation and visual hierarchy, and updated BrandHeader to handle submenu navigation.
+- **Reasoning**: The K-Map section has both a main simulator and a practice mode, and users need easy access to both from mobile navigation. A submenu provides better organization and user experience for related navigation items. The submenu feature is reusable for future simulators that may have multiple modes or related sections.
+- **Impact**: Mobile navigation now supports nested submenus with expand/collapse functionality. K-Map item expands to show "K-Map Simulator" and "Practice Mode" options. Submenu items have proper visual hierarchy with indentation, reduced padding, and active state indicators. Desktop navigation now correctly handles items with children by navigating to the first child. All existing functionality preserved.
+- **Files Modified**:
+  - `src/components/ui/MobileNav.tsx` - Added children property to NavItem interface, added expandedItem state, implemented submenu rendering with expand/collapse, styled submenu items with proper hierarchy
+  - `src/components/BrandHeader.tsx` - Updated K-Map nav item to include children with main simulator and practice mode, updated desktop navigation to handle items with children
+
+### [Updated] - 2026-08-30 18:45
+- **Component**: Mobile Navigation Sidebar UI Redesign
+- **Description**: Redesigned the mobile navigation sidebar with professional, modular, and responsive improvements. Changed from dropdown panel to fixed right-edge sidebar with smooth slide-in animation, made layout single-column for compactness, added prominent close button at top-right, ensured hamburger button toggles sidebar open/close, enhanced visual design with modular cute aesthetic, added body scroll prevention when open, improved touch interactions and accessibility.
+- **Reasoning**: The previous dropdown panel implementation had limited visual appeal and could be improved for better UX. A fixed right-edge sidebar provides a more professional mobile navigation pattern with better space utilization. The slide-in animation creates a smoother user experience. Single-column layout maximizes information density. Prominent close button improves usability. Enhanced visual design with gradient accents, backdrop blur, and consistent styling creates a more polished, professional appearance that matches the app's design language.
+- **Impact**: Mobile navigation now features a professional fixed sidebar with smooth animations, compact single-column layout, prominent close button, and enhanced visual design. Touch interactions are improved with proper body scroll prevention. Hamburger button properly toggles sidebar state. Overall mobile UX improved significantly with better accessibility and visual polish. Desktop navigation unchanged.
+- **Files Modified**:
+  - `src/components/ui/MobileNav.tsx` - Changed from dropdown to fixed right-edge sidebar, added slide-in animation, single-column layout, prominent close button, enhanced visual design, body scroll prevention, improved touch interactions
+
+### [Updated] - 2026-08-30 15:30
+- **Component**: Brand Header & Mobile Navigation
+- **Description**: Made the "DigiWorld" title in the header a clickable button that returns to the CSD Simulator home page (`home` view), added icons to the header nav items, and redesigned the mobile navigation hamburger button + its dropdown "sidebar" panel.
+- **Reasoning**: The DigiWorld title was a non-interactive decorative span, forcing users to use the nav buttons or external logo link to get back to Home. The mobile hamburger button used its own oversized `44x44` sizing that clashed with the theme toggle button, and the dropdown panel had a plain, unpolished background that did not match the app's visual language.
+- **Impact**: Clicking "DigiWorld" now navigates to Home. The hamburger toggle is now sized and styled to match the theme toggle button (responsive `p-1.5`/`p-2`, same border/background/hover glow) and its dropdown panel now has a polished, modular look: gradient top accent, header row with branding + close button, icon-backed pill items with active/hover states, backdrop blur, and Escape/overlay close for accessibility. Desktop nav and all functionality unchanged.
+- **Files Modified**:
+  - `src/components/BrandHeader.tsx` - DigiWorld title → clickable home button; added nav icons; passed icons via navItems; removed redundant `flex lg:hidden` wrapper around MobileNav
+  - `src/components/ui/MobileNav.tsx` - Hamburger button resized/responsive to match theme button; redesigned dropdown panel with modular "cute" styling; added optional `icon` support to NavItem; added Escape-key close
+
+### [Fixed] - 2026-08-30 10:27
+- **Component**: Responsive Text - Bridge Tailwind Type Tokens to Responsive Scale
+- **Description**: Aliased Tailwind v4's `--text-*` theme tokens (`--text-xs` through `--text-5xl`) to the responsive `--font-size-*` scale in `index.css`. This closes a gap in the responsive typography system: Tailwind v4 generates responsive-prefixed text utilities (`sm:text-base`, `md:text-2xl`, `lg:text-xl`, etc.) that consume the fixed `--text-*` custom properties. Without an alias, those prefixed classes stayed at fixed pixel sizes and did NOT scale on large landscape screens (laptop, projector, TV, smartboard, 4K), even though unprefixed `text-*` utilities did.
+- **Reasoning**: The existing large-landscape breakpoint tiers (1536px / 1920px) only affected unprefixed `text-*` utilities. Because many components use responsive-prefixed text classes, their text did not grow on big landscape displays, leaving it hard to read from typical viewing distance. Alias the Tailwind theme tokens so every text utility (prefixed and unprefixed) resolves through the responsive scale. Custom properties are resolved at use time, so the media-query values always apply.
+- **Impact**: All Tailwind font-size utilities — including `sm:` / `md:` / `lg:` / `xl:` prefixed ones — now scale with the responsive `--font-size-*` scale up to ~25px base on TV/smartboard/4K. No component layout changes; existing designs preserved. `6xl+` are intentionally left at Tailwind fixed values (responsive scale tops out at `5xl`). Converted two hardcoded micro-labels in the Number Systems sidebar from `text-[11px]` / `text-[10px]` to responsive `text-xs` for better readability; fixed-canvas SVG glyph font sizes (circuit/grid) remain as intentional, layout-required values.
+- **Files Modified**:
+  - `src/index.css` - Added `--text-*` → `--font-size-*` alias block
+  - `src/simulators/numbersystems/NumberSystemsSidebar.tsx` - `text-[11px]` → `text-xs`, `text-[10px]` → `text-xs`
+
+### [Added] - 2026-08-30
+- **Component**: Responsive Typography - Large Landscape Screen Scaling
+- **Description**: Added two new breakpoint tiers (`min-width: 1536px` and `min-width: 1920px`) to the responsive typography system that scale all `--font-size-*` values up for large landscape displays (laptop, projector, TV, smartboard, 4K)
+- **Reasoning**: The previous type scale capped at the desktop tier (18px base) for all screens ≥1024px. On large landscape devices where width exceeds height, small text became hard to read from typical viewing distance
+- **Impact**: Text automatically scales up ~17% at 1536px+ and ~39% at 1920px+ without modifying any component code — the existing variable-driven utilities (`text-xs` through `text-5xl`) inherit the new sizes. Hardcoded micro-labels (e.g. 9-10px grid labels) are preserved as intentional UI details
+- **Files Modified**: src/index.css, CHANGELOG.md
+
 ### [Fixed] - 2026-08-30
 - **Component**: Theme Background - Body and Root Element
 - **Description**: Added `background-color: var(--bg-primary)` to `html, body` in CSS and inline style on root wrapper div in `main.tsx`.

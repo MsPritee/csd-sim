@@ -1772,6 +1772,42 @@ html, body {
   --font-base-mobile: 14px;      /* 0.875rem */
   --font-base-tablet: 16px;      /* 1rem */
   --font-base-desktop: 18px;     /* 1.125rem */
+  --font-base-large: 21px;       /* 1.3125rem - large landscape screens */
+  --font-base-tv: 25px;          /* 1.5625rem - TV/4K smartboard/4K */
+}
+
+/* ========================================
+   RESPONSIVE TEXT: Bridge Tailwind's font-size
+   theme tokens (--text-*) to the responsive
+   scale (--font-size-*).
+   Tailwind v4 generates text-size utilities
+   (e.g. .sm\:text-base, .md\:text-2xl) that
+   consume the fixed --text-* custom properties.
+   Without this alias, those responsive-prefixed
+   classes stay at fixed pixel sizes and do NOT
+   scale on large landscape screens (laptops,
+   projectors, TVs, smartboards).
+
+   Redefining --text-* here (unlayered, same
+   specificity as Tailwind's @layer theme) makes
+   every Tailwind text utility — prefixed and
+   unprefixed — resolve through the responsive
+   --font-size-* scale defined by the breakpoints
+   below. Custom properties are resolved at use
+   time, so the media-query values always win.
+   ======================================== */
+:root {
+  --text-xs: var(--font-size-xs);
+  --text-sm: var(--font-size-sm);
+  --text-base: var(--font-size-base);
+  --text-lg: var(--font-size-lg);
+  --text-xl: var(--font-size-xl);
+  --text-2xl: var(--font-size-2xl);
+  --text-3xl: var(--font-size-3xl);
+  --text-4xl: var(--font-size-4xl);
+  --text-5xl: var(--font-size-5xl);
+  /* 6xl+ are left at Tailwind's fixed theme values; the responsive
+     scale (--font-size-*) currently tops out at 5xl. */
 }
 
 /* Responsive Spacing Base Units */
@@ -1928,6 +1964,54 @@ html, body {
     --spacing-16: 8rem;     /* 128px */
     --spacing-20: 10rem;    /* 160px */
     --spacing-24: 12rem;    /* 192px */
+  }
+}
+
+/* Responsive Typography Scale - Large Landscape (laptop, projector, large monitor) */
+@media (min-width: 1536px) {
+  :root {
+    /* Base font size for large landscape screens */
+    --font-size-base: var(--font-base-large);
+
+    /* Typography scale based on 21px base */
+    --font-size-xs: 0.875rem;      /* 14px */
+    --font-size-sm: 1rem;          /* 16px */
+    --font-size-base: 1.3125rem;   /* 21px */
+    --font-size-lg: 1.5rem;        /* 24px */
+    --font-size-xl: 1.6875rem;     /* 27px */
+    --font-size-2xl: 2rem;         /* 32px */
+    --font-size-3xl: 2.5rem;       /* 40px */
+    --font-size-4xl: 3rem;         /* 48px */
+    --font-size-5xl: 3.875rem;     /* 62px */
+
+    /* Line heights for large landscape */
+    --line-height-tight: var(--line-height-tight-desktop);
+    --line-height-normal: var(--line-height-normal-desktop);
+    --line-height-relaxed: var(--line-height-relaxed-desktop);
+  }
+}
+
+/* Responsive Typography Scale - TV/Smartboard/4K (wide landscape displays) */
+@media (min-width: 1920px) {
+  :root {
+    /* Base font size for TV / smartboard / 4K displays */
+    --font-size-base: var(--font-base-tv);
+
+    /* Typography scale based on 25px base */
+    --font-size-xs: 1rem;          /* 16px */
+    --font-size-sm: 1.125rem;      /* 18px */
+    --font-size-base: 1.5625rem;   /* 25px */
+    --font-size-lg: 1.75rem;       /* 28px */
+    --font-size-xl: 2rem;          /* 32px */
+    --font-size-2xl: 2.375rem;     /* 38px */
+    --font-size-3xl: 3rem;         /* 48px */
+    --font-size-4xl: 3.5rem;       /* 56px */
+    --font-size-5xl: 4.5rem;       /* 72px */
+
+    /* Line heights for TV / 4K */
+    --line-height-tight: var(--line-height-tight-desktop);
+    --line-height-normal: var(--line-height-normal-desktop);
+    --line-height-relaxed: var(--line-height-relaxed-desktop);
   }
 }
 

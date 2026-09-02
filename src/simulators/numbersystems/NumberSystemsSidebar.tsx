@@ -196,7 +196,7 @@ export function NumberSystemsSidebar({
             >
               <path d="m15 18-6-6 6-6" />
             </svg>
-            <span className="ns-sidebar-collapse-label hidden text-[10px] font-semibold uppercase tracking-wide sm:inline">
+            <span className="ns-sidebar-collapse-label hidden text-xs font-semibold uppercase tracking-wide sm:inline">
               Hide
             </span>
           </button>
@@ -280,7 +280,7 @@ export function NumberSystemsSidebar({
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="font-medium text-sm leading-tight">{system.name}</div>
-                          <div className="text-[11px] opacity-75 mt-0.5">
+                          <div className="text-xs opacity-75 mt-0.5">
                             {typeof system.base === 'number' ? `Base ${system.base}` : 'Special Code'}
                           </div>
                         </div>
