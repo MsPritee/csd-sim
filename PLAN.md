@@ -12,6 +12,9 @@ impact belong in `CHANGELOG.md`, not here.
 
 ## Log
 
+### 2026-09-16 16:01
+- **Fixed**: K-Map wrap-around group overlays rendered as unified solid rectangles (same style as interior groups) in both 2/3/4-var `KMapGrid` and 5-var `FiveVarGrid` planes, via axis contiguous-run block rendering.
+
 ### 2026-09-02 20:46
 - **Refactored**: Navigation System Unification — unified navigation to single MobileNav component across all screen sizes, removed MobileBottomNav and ResponsiveSidebar components, eliminated desktop navigation, consistent hamburger/sidebar pattern for all devices.
 
