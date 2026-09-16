@@ -1,12 +1,14 @@
 import { useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
 import type { KMapModel } from '../../../core/kmap'
 import { adjacentMinterms } from '../../../core/kmap'
-import { KMAP_GROUP_COLORS } from './kmapHighlight'
+import { KMAP_GROUP_COLORS, contiguousRuns } from './kmapHighlight'
 
 const BASE_CELL_SIZE = 70
 const MIN_CELL_SIZE = 45
 const LABEL_WIDTH = 45
 const HEADER_HEIGHT = 45
+/** Extra SVG canvas room so group-border strokes at the right/bottom edge are not clipped. */
+const CANVAS_PAD = 4
 
 interface GroupOverlay {
   /** Minterms belonging to this group. */
@@ -82,8 +84,8 @@ export default function KMapGrid({
     onCellSelect(minterm)
   }, [onCellSelect])
 
-  const width = layout.cols * cellSize + labelWidth
-  const height = layout.rows * cellSize + headerHeight
+  const width = layout.cols * cellSize + labelWidth + CANVAS_PAD
+  const height = layout.rows * cellSize + headerHeight + CANVAS_PAD
 
   // Convert minterm → (row, col) lookup
   const mintermToPos = useMemo(() => {
@@ -106,7 +108,6 @@ export default function KMapGrid({
       const group = groupOverlays[gi]!
       const rows = new Set<number>()
       const cols = new Set<number>()
-      let hasWrap = false
 
       for (const m of group.minterms) {
         const pos = mintermToPos.get(m)
@@ -115,47 +116,24 @@ export default function KMapGrid({
         cols.add(pos.col)
       }
 
-      const sortedRows = Array.from(rows).sort((a, b) => a - b)
-      const sortedCols = Array.from(cols).sort((a, b) => a - b)
+      // Flatten each axis into contiguous runs. A valid group is one rectangle
+      // (possibly wrapping at a seam), so it is a product of row-runs and
+      // col-runs; drawing one solid rectangle per block makes a non-wrap group
+      // a single rectangle and a wrap-around group two (or four) solid pieces
+      // that line up with the seam — matching the normal-group style.
+      const rowRuns = contiguousRuns(Array.from(rows).sort((a, b) => a - b))
+      const colRuns = contiguousRuns(Array.from(cols).sort((a, b) => a - b))
+      const pad = 2
 
-      // Detect wrap-around: large gap between min and max col/row
-      if (sortedCols.length >= 2) {
-        const colSpan = sortedCols[sortedCols.length - 1]! - sortedCols[0]!
-        if (colSpan > layout.cols / 2) hasWrap = true
-      }
-      if (sortedRows.length >= 2) {
-        const rowSpan = sortedRows[sortedRows.length - 1]! - sortedRows[0]!
-        if (rowSpan > layout.rows / 2) hasWrap = true
-      }
-
-      if (!hasWrap) {
-        // Simple bounding rectangle
-        const minRow = sortedRows[0]!
-        const maxRow = sortedRows[sortedRows.length - 1]!
-        const minCol = sortedCols[0]!
-        const maxCol = sortedCols[sortedCols.length - 1]!
-        const pad = 2
-        result.push({
-          x: labelWidth + minCol * cellSize - pad,
-          y: headerHeight + minRow * cellSize - pad,
-          w: (maxCol - minCol + 1) * cellSize + pad * 2,
-          h: (maxRow - minRow + 1) * cellSize + pad * 2,
-          colorIndex: group.colorIndex,
-          groupIdx: gi,
-        })
-      } else {
-        // Wrap-around: the cells wrap around the grid edges.
-        // Render individual rects at each (row, col) position so corners
-        // get separate small rects instead of one giant bounding box.
-        const pad = 2
-        for (const m of group.minterms) {
-          const pos = mintermToPos.get(m)
-          if (!pos) continue
+      for (const rowRun of rowRuns) {
+        for (const colRun of colRuns) {
+          const minRow = rowRun[0]!
+          const minCol = colRun[0]!
           result.push({
-            x: labelWidth + pos.col * cellSize - pad,
-            y: headerHeight + pos.row * cellSize - pad,
-            w: cellSize + pad * 2,
-            h: cellSize + pad * 2,
+            x: labelWidth + minCol * cellSize - pad,
+            y: headerHeight + minRow * cellSize - pad,
+            w: colRun.length * cellSize + pad * 2,
+            h: rowRun.length * cellSize + pad * 2,
             colorIndex: group.colorIndex,
             groupIdx: gi,
           })
@@ -242,7 +220,7 @@ export default function KMapGrid({
                   fill: 'var(--bg-tertiary)',
                   stroke: selectedCells.has(cell.minterm) || hoveredCell === cell.minterm
                     ? 'var(--accent-primary)'
-                    : 'var(--border-color)',
+                    : 'var(--border-light)',
                 }}
                 onClick={() => handleCellClick(cell.minterm)}
                 onContextMenu={(e) => {

@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
 import type { KMapModel } from '../../../core/kmap'
-import { adjacentMinterms } from '../../../core/kmap'
-import { KMAP_GROUP_COLORS } from './kmapHighlight'
-import { toGrayCode, grayString } from '../../../core/kmap/gray'
+import { adjacentMinterms, mintermToCell } from '../../../core/kmap'
+import { KMAP_GROUP_COLORS, contiguousRuns } from './kmapHighlight'
+import { toGrayCode, fromGrayCode, grayString } from '../../../core/kmap/gray'
 
 const BASE_CELL_SIZE = 64
 const MIN_CELL_SIZE = 40
@@ -10,6 +10,8 @@ const LABEL_WIDTH = 40
 const HEADER_HEIGHT = 40
 const PLANE_GAP = 24
 const PLANE_LABEL_HEIGHT = 22
+/** Extra SVG canvas room so group-border strokes at the bottom/right edge are not clipped. */
+const CANVAS_PAD = 4
 
 interface FiveVarGridProps {
   kmap: KMapModel
@@ -32,8 +34,16 @@ interface PlaneCell {
   col: number
 }
 
-function cellToAbcd(row: number, col: number): number {
-  return (toGrayCode(row) << 2) | toGrayCode(col)
+/**
+ * Minterm of a cell at (planeRow, planeCol) with the fifth variable fixed to
+ * eValue. Uses the core model convention for 5 variables:
+ * binary bits = A B C D E (A=bit4 … E=bit0), with rows = {A,B} in gray order
+ * and columns = {C,D} in gray order.
+ */
+function planeCellMinterm(planeRow: number, planeCol: number, eValue: 0 | 1): number {
+  const ab = toGrayCode(planeRow)
+  const cd = toGrayCode(planeCol)
+  return (ab << 3) | (cd << 1) | eValue
 }
 
 function buildPlaneCells(kmap: KMapModel, eValue: 0 | 1): PlaneCell[][] {
@@ -43,9 +53,8 @@ function buildPlaneCells(kmap: KMapModel, eValue: 0 | 1): PlaneCell[][] {
 
   for (let row = 0; row < 4; row++) {
     for (let col = 0; col < 4; col++) {
-      const abcd = cellToAbcd(row, col)
-      const minterm = (eValue << 4) | abcd
-      const { row: modelRow, col: modelCol } = mintermToModelPos(minterm)
+      const minterm = planeCellMinterm(row, col, eValue)
+      const { row: modelRow, col: modelCol } = mintermToCell(kmap, minterm)
       const cell = kmap.cells[modelRow]?.[modelCol]
       grid[row]![col] = {
         minterm,
@@ -59,14 +68,12 @@ function buildPlaneCells(kmap: KMapModel, eValue: 0 | 1): PlaneCell[][] {
   return grid
 }
 
-function mintermToModelPos(minterm: number): { row: number; col: number } {
-  const e = (minterm >> 4) & 1
-  const abcd = minterm & 0x0f
-  const rowInPlane = (abcd >> 2) & 0x03
-  const colInPlane = abcd & 0x03
-  const modelRow = e * 2 + (rowInPlane >> 1)
-  const modelCol = (rowInPlane & 1) * 4 + colInPlane
-  return { row: modelRow, col: modelCol }
+/** Plane position (e, row, col) of a minterm under the model's 5-variable convention. */
+function mintermToPlanePos(minterm: number): { e: 0 | 1; row: number; col: number } {
+  const e = (minterm & 1) as 0 | 1
+  const row = fromGrayCode((minterm >> 3) & 0x03)
+  const col = fromGrayCode((minterm >> 1) & 0x03)
+  return { e, row, col }
 }
 
 export default function FiveVarGrid({
@@ -213,7 +220,7 @@ export default function FiveVarGrid({
                   fill: 'var(--bg-tertiary)',
                   stroke: selectedCells.has(cell.minterm) || hoveredCell === cell.minterm
                     ? 'var(--accent-primary)'
-                    : 'var(--border-color)',
+                    : 'var(--border-light)',
                 }}
                 onClick={() => handleCellClick(cell.minterm)}
                 onContextMenu={(e) => {
@@ -280,7 +287,7 @@ export default function FiveVarGrid({
         {/* Group overlay rectangles — unified bounding rect per group per plane (rendered AFTER cells so they appear on top) */}
         {groupOverlays?.map((group, gi) => {
           const planeMinterms = group.minterms.filter((m) => {
-            const eBit = (m >> 4) & 1
+            const eBit = m & 1
             return eBit === eValue
           })
           if (planeMinterms.length === 0) return null
@@ -288,54 +295,34 @@ export default function FiveVarGrid({
           const color = KMAP_GROUP_COLORS[group.colorIndex % KMAP_GROUP_COLORS.length]
           const pad = 2
 
-          // Check for wrap-around: if rows or cols span more than half the grid
-          const rows = new Set<number>()
-          const cols = new Set<number>()
-          for (const m of planeMinterms) {
-            const abcBits = m & 0xf
-            const ab = (abcBits >> 2) & 0x3
-            const cd = abcBits & 0x3
-            rows.add(ab === 0 ? 0 : ab === 1 ? 1 : ab === 3 ? 2 : 3)
-            cols.add(cd === 0 ? 0 : cd === 1 ? 1 : cd === 3 ? 2 : 3)
-          }
-          const sortedRows = Array.from(rows).sort((a, b) => a - b)
-          const sortedCols = Array.from(cols).sort((a, b) => a - b)
-          let hasWrap = false
-          if (sortedCols.length >= 2) {
-            const colSpan = sortedCols[sortedCols.length - 1]! - sortedCols[0]!
-            if (colSpan > 4 / 2) hasWrap = true
-          }
-          if (sortedRows.length >= 2) {
-            const rowSpan = sortedRows[sortedRows.length - 1]! - sortedRows[0]!
-            if (rowSpan > 4 / 2) hasWrap = true
-          }
+          const positions = planeMinterms.map((m) => mintermToPlanePos(m))
+          const rows = new Set(positions.map((p) => p.row))
+          const cols = new Set(positions.map((p) => p.col))
 
-          if (hasWrap) {
-            // Wrap-around: render individual rects at each (row, col) position
-            return (
-              <g key={`group-${eValue}-${gi}`} className="pointer-events-none">
-                {planeMinterms.map((m) => {
-                  const abcBits = m & 0xf
-                  const ab = (abcBits >> 2) & 0x3
-                  const cd = abcBits & 0x3
-                  const row = ab === 0 ? 0 : ab === 1 ? 1 : ab === 3 ? 2 : 3
-                  const col = cd === 0 ? 0 : cd === 1 ? 1 : cd === 3 ? 2 : 3
+          // Flatten each axis into contiguous runs so every component of the
+          // group (including wrap-around pieces split at a seam) is drawn as
+          // one solid rectangle — same style as a regular one-piece group.
+          const rowRuns = contiguousRuns(Array.from(rows).sort((a, b) => a - b))
+          const colRuns = contiguousRuns(Array.from(cols).sort((a, b) => a - b))
+
+          return (
+            <g key={`group-${eValue}-${gi}`} className="pointer-events-none">
+              {rowRuns.flatMap((rowRun, ri) =>
+                colRuns.map((colRun, ci) => {
+                  const minRow = rowRun[0]!
+                  const minCol = colRun[0]!
+                  const x = offsetX + minCol * cellSize - pad
+                  const y = PLANE_LABEL_HEIGHT + HEADER_HEIGHT + minRow * cellSize - pad
+                  const w = colRun.length * cellSize + pad * 2
+                  const h = rowRun.length * cellSize + pad * 2
                   return (
-                    <g key={`gm-${eValue}-${gi}-${m}`}>
+                    <g key={`gb-${eValue}-${gi}-${ri}-${ci}`}>
+                      <rect x={x} y={y} width={w} height={h} fill={color.fill} rx={4} ry={4} />
                       <rect
-                        x={offsetX + col * cellSize - pad}
-                        y={PLANE_LABEL_HEIGHT + HEADER_HEIGHT + row * cellSize - pad}
-                        width={cellSize + pad * 2}
-                        height={cellSize + pad * 2}
-                        fill={color.fill}
-                        rx={4}
-                        ry={4}
-                      />
-                      <rect
-                        x={offsetX + col * cellSize - pad}
-                        y={PLANE_LABEL_HEIGHT + HEADER_HEIGHT + row * cellSize - pad}
-                        width={cellSize + pad * 2}
-                        height={cellSize + pad * 2}
+                        x={x}
+                        y={y}
+                        width={w}
+                        height={h}
                         fill="none"
                         stroke={color.border}
                         strokeWidth={2.5}
@@ -345,39 +332,8 @@ export default function FiveVarGrid({
                       />
                     </g>
                   )
-                })}
-              </g>
-            )
-          }
-
-          // Simple bounding rectangle (no wrap)
-          const minRow = sortedRows[0]!
-          const maxRow = sortedRows[sortedRows.length - 1]!
-          const minCol = sortedCols[0]!
-          const maxCol = sortedCols[sortedCols.length - 1]!
-          return (
-            <g key={`group-${eValue}-${gi}`} className="pointer-events-none">
-              <rect
-                x={offsetX + minCol * cellSize - pad}
-                y={PLANE_LABEL_HEIGHT + HEADER_HEIGHT + minRow * cellSize - pad}
-                width={(maxCol - minCol + 1) * cellSize + pad * 2}
-                height={(maxRow - minRow + 1) * cellSize + pad * 2}
-                fill={color.fill}
-                rx={4}
-                ry={4}
-              />
-              <rect
-                x={offsetX + minCol * cellSize - pad}
-                y={PLANE_LABEL_HEIGHT + HEADER_HEIGHT + minRow * cellSize - pad}
-                width={(maxCol - minCol + 1) * cellSize + pad * 2}
-                height={(maxRow - minRow + 1) * cellSize + pad * 2}
-                fill="none"
-                stroke={color.border}
-                strokeWidth={2.5}
-                rx={4}
-                ry={4}
-                strokeLinejoin="round"
-              />
+                })
+              )}
             </g>
           )
         })}
@@ -386,8 +342,8 @@ export default function FiveVarGrid({
   }
 
   const planeWidth = 4 * cellSize
-  const totalWidth = LABEL_WIDTH + planeWidth + PLANE_GAP + planeWidth + LABEL_WIDTH
-  const totalHeight = PLANE_LABEL_HEIGHT + HEADER_HEIGHT + 4 * cellSize
+  const totalWidth = LABEL_WIDTH + planeWidth + PLANE_GAP + planeWidth + LABEL_WIDTH + CANVAS_PAD
+  const totalHeight = PLANE_LABEL_HEIGHT + HEADER_HEIGHT + 4 * cellSize + CANVAS_PAD
 
   return (
     <div ref={wrapRef} className="overflow-x-auto">
@@ -402,8 +358,8 @@ export default function FiveVarGrid({
         {/* Cross-plane adjacency lines */}
         {Array.from({ length: 4 }, (_, row) =>
           Array.from({ length: 4 }, (_, col) => {
-            const m0 = cellToAbcd(row, col)
-            const m1 = (1 << 4) | m0
+            const m0 = planeCellMinterm(row, col, 0)
+            const m1 = planeCellMinterm(row, col, 1)
             if (!selectedCells.has(m0) && !selectedCells.has(m1)) return null
             if (selectedCells.has(m0) && selectedCells.has(m1)) {
               return (

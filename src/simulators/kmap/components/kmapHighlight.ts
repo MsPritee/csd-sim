@@ -34,3 +34,28 @@ export const KMAP_GROUP_COLORS: readonly KMapGroupColor[] = [
   { fill: 'rgba(248,113,113,0.25)', border: '#ef4444' },   // red
   { fill: 'rgba(34,211,238,0.25)', border: '#06b6d4' },    // cyan
 ]
+
+/**
+ * Split an ascending array of occupied grid indices into maximal contiguous
+ * runs. Used to render K-map groups as solid rectangles: a flat contiguous
+ * run is a single solid piece, so a group that wraps around a seam (e.g. rows
+ * [0,3] or cols [0,3]) yields two solid rectangles — the same style as a
+ * regular one-piece group, just split where the map folds.
+ * @param sorted ascending unique indices (an empty array returns [])
+ * @returns runs such as [1,2,3] => [[1,2,3]] and [0,3] => [[0],[3]]
+ */
+export function contiguousRuns(sorted: readonly number[]): number[][] {
+  if (sorted.length === 0) return []
+  const runs: number[][] = []
+  let run = [sorted[0]!]
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === sorted[i - 1]! + 1) {
+      run.push(sorted[i]!)
+    } else {
+      runs.push(run)
+      run = [sorted[i]!]
+    }
+  }
+  runs.push(run)
+  return runs
+}
