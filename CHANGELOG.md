@@ -7,6 +7,130 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [Fixed] - 2026-09-16 16:01
+- **Component**: K-Map Wrap-Around Group Rendering (both grids)
+- **Description**: Wrap-around groups on K-map edges (left-right, top-bottom, and four-corner) are now drawn as solid merged rectangles — the same style as regular interior groups — instead of scattered per-cell squares. Each group's occupied rows and columns are flattened into maximal contiguous runs (`contiguousRuns` helper in `kmapHighlight.ts`), and one solid overlay rectangle is rendered per (row-run × col-run) block. A non-wrap group still renders as exactly one rectangle (unchanged); a left-right or top-bottom wrap group renders as two solid bars that line up with the map's fold seam; a four-corner group renders as four clean corner rectangles. Applied identically to the 2/3/4-variable `KMapGrid` and to each plane of the 5-variable `FiveVarGrid`. Replaces the previous `hasWrap` branch that emitted one small rounded rect per minterm.
+- **Reasoning**: The user reported that wrap-around groups of size 4/8 were not represented properly — the grouping/detection math was already correct, but the visual layer drew edge groups as disconnected per-cell boxes instead of unified rectangles like every normal group.
+- **Impact**: Visual-only change; no group-detection, adjacency, or simplification logic touched. All 27 K-map test files pass, including new tests asserting wrap groups render as merged bars (2 or 4 solid rectangles with the correct geometry) for both grids. Previously recorded `layout` useMemo dependency flagged by oxlint remains an inherited pre-existing warning.
+- **Files Modified**:
+  - `src/simulators/kmap/components/kmapHighlight.ts` - Added exported `contiguousRuns` helper
+  - `src/simulators/kmap/components/KMapGrid.tsx` - Replaced `hasWrap` branch with run-based single-rect-per-block rendering
+  - `src/simulators/kmap/components/FiveVarGrid.tsx` - Same run-based per-plane overlay rendering
+  - `src/tests/simulators/kmap/KMapGrid.test.tsx` - Added 5 wrap/non-wrap overlay geometry tests
+  - `src/tests/simulators/kmap/FiveVarGrid.test.tsx` - Added 3 wrap/non-wrap per-plane overlay geometry tests
+
+### [Removed] - 2026-09-13 23:07
+- **Component**: K-Map Section Separation — Gap + Visible Border (revert)
+- **Description**: Reverted the changes documented in `### [Added] - 2026-09-13 23:04` at the user's request. Removed the `.section-card-results` rule from `index.css` (both duplicate blocks), restored the Results-tab container spacing to `space-y-2 sm:space-y-3`, removed `section-card-results` from the SectionCard className in `ResultsTabContent.tsx` (Simplified Expression), `LogicCircuit.tsx`, `VerifyPanel.tsx`, and `TruthTablePanel.tsx`, and restored the K-Map grid → Truth Table gap to `mt-2 sm:mt-3` in `KMapSimulator.tsx`. All six files are back to their pre-change state.
+- **Reasoning**: The user asked to undo the last changes made for the "no gap between Simplified Expression / Logic Circuit Diagram / Verify, and same for K-Map grid and truth table" issue.
+- **Impact**: None beyond the revert — every section card returns to the shared `--bg-card` background with the original spacing. TypeScript build and kmap tests pass; lint 0 errors.
+- **Files Modified**:
+  - `src/index.css` - Removed `.section-card-results` rule (2 blocks)
+  - `src/simulators/kmap/components/ResultsTabContent.tsx` - Spacing back to `space-y-2 sm:space-y-3`; card back to `section-card-primary`
+  - `src/simulators/kmap/components/LogicCircuit.tsx` - Card back to `section-card-secondary`
+  - `src/simulators/kmap/components/VerifyPanel.tsx` - Card back to `section-card-secondary`
+  - `src/simulators/kmap/components/TruthTablePanel.tsx` - Removed `section-card-results` className
+  - `src/simulators/kmap/KMapSimulator.tsx` - Truth Table gap back to `mt-2 sm:mt-3`
+
+### [Added] - 2026-09-13 23:04
+- **Component**: K-Map Section Separation — Gap + Visible Border
+- **Description**: Made the previously invisible gaps between stacked sections clearly visible using dedicated CSS. Every section card (Simplified Expression, Logic Circuit Diagram, Verify, and the Truth Table) now carries a new `.section-card-results` class that gives it a distinct `--bg-tertiary` background plus a stronger `1px` border (`color-mix(in srgb, var(--text-primary) 22%, var(--border-color))`) so each card stands off the panel's `--bg-card` background. Results-tab container spacing was increased from `space-y-2 sm:space-y-3` (8–12px) to `space-y-3 sm:space-y-4` (12–16px), and the gap between the K-Map grid and the Truth Table was increased from `mt-2 sm:mt-3` to `mt-3 sm:mt-4` to match.
+- **Reasoning**: The user reported there was still no visible gap between the "Simplified Expression", "Logic Circuit Diagram", and "Verify" sections, and asked for the same treatment for the K-Map grid and Truth Table. The sections did have a Tailwind gap, but every section card and the panel behind them shared the same `--bg-card` background with only a faint `1px var(--border-color)` outline (in the dark theme `--border-color` = slate-800 ≈ the card background), so the sections visually merged into one continuous block. The user selected "Both gap and borders" to make separation unambiguous.
+- **Impact**: The four stacked sections in the Results tab and the Truth Table (both under the grid and in the relocated collapsed-panel spot) now read as distinct bordered cards with clearly visible gaps between them in both dark and light themes (the `color-mix` border resolves differently per theme to stay visible). Learning/Examples tabs unaffected (they keep the unmodified `section-card-secondary`). TypeScript build clean; kmap + kmap application tests (8 files / 100 tests) pass; lint 0 errors.
+- **Files Modified**:
+  - `src/index.css` - Added `.section-card-results` rule after the `.section-card-secondary` block in both duplicate theme sections
+  - `src/simulators/kmap/components/ResultsTabContent.tsx` - Container `space-y-2 sm:space-y-3` → `space-y-3 sm:space-y-4`; Simplified Expression card now `section-card-primary section-card-results`
+  - `src/simulators/kmap/components/LogicCircuit.tsx` - Section card now `section-card-secondary section-card-results`
+  - `src/simulators/kmap/components/VerifyPanel.tsx` - Section card now `section-card-secondary section-card-results`
+  - `src/simulators/kmap/components/TruthTablePanel.tsx` - Truth Table card now `section-card-secondary section-card-results`
+  - `src/simulators/kmap/KMapSimulator.tsx` - Truth Table gap `mt-2 sm:mt-3` → `mt-3 sm:mt-4`
+
+### [Removed] - 2026-09-13 22:35
+- **Component**: K-Map Results Tab Section Separation (revert)
+- **Description**: Reverted the changes documented in `### [Updated] - 2026-09-13 22:23` at the user's request. Removed the `.section-card-results` CSS class from `index.css` (both duplicate blocks), restored the results-tab container spacing to `space-y-2 sm:space-y-3`, and removed `section-card-results` from the SectionCard className in `ResultsTabContent.tsx` (Simplified Expression), `LogicCircuit.tsx`, and `VerifyPanel.tsx`. All four files are back to their pre-change state.
+- **Reasoning**: The user asked to undo the last changes made for the "no gap between Simplified Expression / Logic Circuit Diagram / Verify" question.
+- **Impact**: None beyond the revert — section cards return to `--bg-card` background with the original 8–12px spacing; no other components touched. TypeScript build clean; kmap tests (3 files / 27 tests) pass; lint 0 errors.
+- **Files Modified**:
+  - `src/index.css` - Removed `.section-card-results` rule (2 blocks)
+  - `src/simulators/kmap/components/ResultsTabContent.tsx` - Spacing back to `space-y-2 sm:space-y-3`; SectionCard back to `section-card-primary`
+  - `src/simulators/kmap/components/LogicCircuit.tsx` - SectionCard back to `section-card-secondary`
+  - `src/simulators/kmap/components/VerifyPanel.tsx` - SectionCard back to `section-card-secondary`
+
+### [Updated] - 2026-09-13 22:23
+- **Component**: K-Map Results Tab Section Separation
+- **Description**: Made the gap between the "Simplified Expression", "Logic Circuit Diagram" (LogicCircuit), and "Verify" (VerifyPanel) sections in the Results tab clearly visible. Previously the sections were separated by Tailwind `space-y-2 sm:space-y-3` (8–12px), but every section card and the panel behind them shared the same `--bg-card` background, so the gap strip was the identical background color — the three bordered cards read as one continuous panel with only faint `--border-color` hairlines. Fix: (1) increased the results-tab container to `space-y-3 sm:space-y-4` (12–16px); (2) added a new `.section-card-results` CSS class (`background: var(--bg-tertiary)`) and applied it to the three section cards so they visibly stand off the `--bg-card` panel background, making the gaps between them read as distinct background strips. A dedicated class was used instead of modifying the shared `.section-card-secondary` because that class is also used by `LearningTabContent`; both duplicate `.section-card-*` CSS blocks in `index.css` were extended identically.
+- **Reasoning**: The user reported there was no visible gap between the three sections. The gap existed but was invisible because the section cards and panel shared one background color, so the borders alone gave no breathing room.
+- **Impact**: The three result sections now appear as distinct cards (tertiary background + border + shadow) separated by clearly visible 12–16px gaps. Learning/Examples tabs unaffected. TypeScript build clean; kmap tests (3 files / 27 tests) pass; lint 0 errors.
+- **Files Modified**:
+  - `src/index.css` - Added `.section-card-results { background: var(--bg-tertiary); }` after both `.section-card-secondary` blocks
+  - `src/simulators/kmap/components/ResultsTabContent.tsx` - Container spacing `space-y-2 sm:space-y-3` → `space-y-3 sm:space-y-4`; "Simplified Expression" SectionCard now `section-card-primary section-card-results`
+  - `src/simulators/kmap/components/LogicCircuit.tsx` - SectionCard now `section-card-secondary section-card-results`
+  - `src/simulators/kmap/components/VerifyPanel.tsx` - SectionCard now `section-card-secondary section-card-results`
+
+### [Added] - 2026-09-13 21:13
+- **Component**: K-Map Simulator Right-Panel Collapse Toggle
+- **Description**: Added a hide/show toggle for the right-hand results panel (the tabbed Results/Learning/Examples section). The button is a slim vertically-centred handle that straddles the right edge of the layout (26px wide, 44px min-height, accent-coloured with a chevron that points right when the panel is shown and left when it is hidden). When the right panel is hidden, the Truth Table relocates from its usual spot under the K-Map grid into the right-hand column (rendered in a card styled like the tabbed panel), freeing the left column of vertical truth-table space. When the user is in "K-Map only" view mode (`viewMode === 'kmap'`) and hides the panel, the grid expands to the full container width instead of leaving an empty right column. The page root gained `overflow-x-clip` so the protruding handle never causes a horizontal scrollbar on small screens.
+- **Reasoning**: The user requested a button at the centre of the right-side edge to hide/show the right section, and for the truth table to take over that position when the section is collapsed — keeping the truth table usable while giving the K-map a cleaner, taller presentation without the dense panels.
+- **Impact**: New `showRightPanel` state (default `true`, behaviour unchanged by default). Toggling hides the whole tabbed results panel and moves the Truth Table into the right column (still gated by view mode, so it is absent only in K-map-only mode, where the grid goes full-width instead). Fully reversible with one click; no core/application logic touched; TypeScript build clean; all kmap component tests (3 files / 27 tests) pass; lint shows 0 errors.
+- **Files Modified**:
+  - `src/simulators/kmap/KMapSimulator.tsx` - Added `showRightPanel` state, `relative` layout wrapper, right-column branch (TabbedPanel vs relocated TruthTablePanel), full-width grid when collapsed in K-map-only mode, edge toggle button with `aria-expanded`/`aria-label`/`aria-controls`, `overflow-x-clip` on the page root
+
+### [Updated] - 2026-09-13 21:59
+- **Component**: K-Map Simulator Right-Panel Collapse Toggle
+- **Description**: Moved the panel toggle button from the layout wrapper (`position: absolute`, protruding 10px past the content container edge) to a viewport-anchored handle (`position: fixed`, `right: 0`, `top: 50%`) so it is always visible at the exact right edge of the screen at the vertical midpoint — regardless of page scroll or content width. Removed the now-unnecessary `overflow-x-clip` from the page root (no longer needed since the button no longer protrudes from any ancestor).
+- **Reasoning**: Supersedes the `### [Added] - 2026-09-13 21:13` layout-relative placement. The user requested the toggle be placed at the right-side edge of the **screen** (viewport), not just the content container, ensuring it is always reachable and visible.
+- **Impact**: Button is now fixed to the viewport at `right: 0; top: 50%`, vertically centred on every scroll position and screen size. All other toggle behaviour (show/hide, truth-table relocation, K-map-only full-width) unchanged. TypeScript build clean; kmap tests (3 files / 27 tests) pass; lint 0 errors.
+- **Files Modified**:
+  - `src/simulators/kmap/KMapSimulator.tsx` - Changed toggle button `position` from `absolute` to `fixed`, `right` from `-10px` to `0`; removed `overflow-x-clip` from the page-root wrapper div
+
+### [Fixed] - 2026-09-13 22:11
+- **Component**: App View-Transition Wrapper (fixed-positioning containing block)
+- **Description**: Corrected the position of the K-Map right-panel toggle button, which was appearing at the middle of the whole scrollable page instead of the middle of the visible screen. Root cause: every simulator page in `App.tsx` wraps its content in `<div className="transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`>. The RESTING state still applied `transform: translateX(0)` (`translate-x-0`), and CSS makes any `transform`-ed ancestor the containing block for `position: fixed` descendants. The button's `fixed; top: 50%` therefore anchored to that wrapper (the full page height), not the viewport — forcing the user to scroll down to reach it. Removed `translate-x-0` from the resting state of all six simulator wrappers (gates, circuit, numbersystems, faq, kmap, practice); the slide/fade transition still animates correctly because the `translate-x-4` transient state transitions to "no transform".
+- **Reasoning**: Supersedes the `### [Updated] - 2026-09-13 21:59` placement: the code was viewport-intent but the ancestor transform silently broke `position: fixed`. This is the well-known "fixed inside transformed ancestor" gotcha.
+- **Impact**: The toggle button now stays pinned at the right edge, vertical middle of the current viewport at all scroll positions, as requested. The same latent bug is removed for any current/future `fixed` elements inside the other simulator pages. View-transition visuals (fade + 16px slide) unchanged. TypeScript build clean; App tests unaffected (no assertions on the removed class); kmap tests (3 files / 27 tests) pass; lint 0 errors.
+- **Files Modified**:
+  - `src/App.tsx` - Removed `translate-x-0` from the resting-state className of the six simulator view-transition wrappers (was `opacity-100 translate-x-0`, now `opacity-100`)
+
+### [Updated] - 2026-09-13 18:40
+- **Component**: K-Map Simulator View Mode Toggle
+- **Description**: Hidden the "Split" view mode button from the view-mode toggle. Removed `'split'` from the rendered mode array in `KMapSimulator.tsx` and cleaned up the now-unreachable label mapping. The Split View feature itself is fully preserved behind the scenes: `SplitView` component, the `'split'` value in `viewMode`'s type union, and the `viewMode === 'split'` conditional render block remain intact, so the button can be restored later with a single one-line change.
+- **Reasoning**: The user asked to hide the Split button for now and re-enable it at a later stage; the feature is not ready for user-facing exposure yet.
+- **Impact**: The view-mode toggle now shows K-Map / Both / Truth-Table only. No behavior change for existing modes; no code paths removed, so nothing breaks and restoration is trivial.
+- **Files Modified**:
+  - `src/simulators/kmap/KMapSimulator.tsx` - Removed `'split'` from the rendered toggle array and the unreachable ternary label
+
+### [Fixed] - 2026-09-13 18:32
+- **Component**: K-Map Simulator 5-Variable Mode
+- **Description**: Fixed the "5 Variables" option in the variable-count dropdown not rendering the 5-variable K-map. Root cause: `validateVariables` in `src/application/kmap/use-cases.ts` truncated the variable list with `.slice(0, 4)` (comment "limits to 2-4 variables"), so selecting 5 Variables built a 4-variable model — `is5Var = variables.length === 5` in `KMapSimulator.tsx` never became true and the dual-plane `FiveVarGrid` never rendered. Also fixed a latent minterm-mapping bug in `FiveVarGrid.tsx`: the grid's private `cellToAbcd`/`mintermToModelPos` helpers encoded the plane as the top bit (`(e << 4) | abcd`) and treated the plane column as two gray bits, which disagreed with the core model's convention (`minterm = (gray(row) << 3) | gray(col)` with rows = {A,B} bits 4-3 and cols = {C,D,E} bits 2-0); a script verified 28 of 32 plane cells resolved to the wrong model position. Replaced those helpers with `planeCellMinterm(r,c,e) = (gray(r) << 3) | (gray(c) << 1) | e` and `mintermToPlanePos(m)` (E = bit 0), and switched cell lookups to the core `mintermToCell`; verified 32/32 cells are now consistent. Updated the validator cap test to expect 5 variables and added a `createKMapWithVariables(['A','B','C','D','E'])` (32-cell) test, plus a new `FiveVarGrid.test.tsx` regression suite (renders both planes with 32 cells, minterm-number convention, value display, cell click reports the correct minterm).
+- **Reasoning**: Users reported that selecting "5 Variables" did nothing — the dropdown listed the option but kept showing the 4-variable map. The store/UI already supported 5 variables end-to-end (FiveVarGrid, toolbars, variable splitting); the application-layer validator was the single choke point silently clipping the request. Reaching 5 variables then exposed the grid's private mapping inconsistency, which would have produced wrong cells (wrong minterm numbers, wrong value display, wrong grouping) in the new mode.
+- **Impact**: Selecting "5 Variables" now renders the full dual-plane K-map (planes labelled `E = 0` and `E = 1`, each a 4x4 gray-coded AB x CD plane), cell numbering matches the core model convention (`Edgar` E as the least-significant variable), painting/grouping/simplification operate on the correct cells, and the new behavior is locked in by 4 new component tests plus updated application-layer tests. TypeScript build clean; full kmap suite (simulator + application + core) = 27 files / 304 tests pass; lint shows 0 errors (16 pre-existing warnings in numbersystems lesson files only).
+- **Files Modified**:
+  - `src/application/kmap/use-cases.ts` - `validateVariables` cap corrected from `.slice(0, 4)` to `.slice(0, 5)`, comment updated to "limits to 2-5 variables"
+  - `src/simulators/kmap/components/FiveVarGrid.tsx` - Replaced `cellToAbcd`/`mintermToModelPos` with `planeCellMinterm`/`mintermToPlanePos`, cell lookups now use core `mintermToCell`; group overlay, wrap-around, and cross-plane adjacency mapping updated to the E-as-bit-0 convention (E = variable[4], A/B = plane rows, C/D = plane cols)
+  - `src/tests/application/kmap/use-cases.test.ts` - Cap test now asserts 5 variables; added 5-variable `createKMapWithVariables` test (rowCount/colCount sizes, 32 cells)
+  - `src/tests/simulators/kmap/FiveVarGrid.test.tsx` - New regression suite (4 tests) covering plane rendering, minterm convention, value display, and cell-click reporting
+
+### [Fixed] - 2026-09-13 17:41
+- **Component**: Logic Circuit Diagram Layout
+- **Description**: Fixed the auto-generated logic circuit diagram being improperly rendered in several cases. The old layout centred the first-level gates against the *number of variables* instead of their own block height, so a circuit with many terms (many groups) pushed the top gate above the SVG canvas (`startY` went negative) and gates got clipped or the diagram overflowed. The SVG height only accounted for the variable rail band, giving it no margin for tall gate blocks, and the fixed `svgWidth = OUTPUT_X + 120` clipped long simplified expressions (e.g. a 4-variable SOP with many terms). NOT bubbles (`NotCircle`) were drawn *inside* the gate body (`x2 + 6`) instead of on the incoming wire. Replaced the layout math with a shared 48px row grid: `maxRows = max(varCount, termCount)` with the gate block vertically centred on that band (`outputY = bandMid`), gate width growing with the longest term text, SVG height derived from the row grid with bottom margin, and SVG width derived from the expression length. Anchored the second-level gate, the output wire, and the `F = …` label to `outputY` instead of `svgHeight / 2`, and moved the NOT bubble to `x2 - 6` (just before the gate edge).
+- **Reasoning**: Users reported the circuit diagram looked wrong — gates clipped/out of frame for expressions with many terms, long expressions truncated by the fixed canvas width, and NOT indicators misplaced. Root cause was presentation-layer layout math in `LogicCircuit.tsx`; no core logic or term computation was touched.
+- **Impact**: Circuits with any number of terms/groups now always fit vertically with the gate block centred on the input band, long simplified expressions no longer get cut off (canvas width scales with expression length, and the container scrolls horizontally via `overflow-x-auto`), and NOT bubbles sit at the gate input edge where students expect them. TypeScript build clean, all 23 kmap tests pass, no new lint errors.
+- **Files Modified**:
+  - `src/simulators/kmap/components/LogicCircuit.tsx` - New row-grid layout math (`computeLayout`), `outputY` anchoring for second gate/output, NOT bubble placement, expression-aware SVG sizing
+
+### [Fixed] - 2026-09-13 17:40
+- **Component**: K-Map Simulator Visualization & Results Panel
+- **Description**: Fixed five K-map visualization/UX issues: (1) wrap-around group detection used `span > axis/2`, which wrongly treated full-width groups (e.g. a row of 4 cells) as wrapping, so they were drawn as separate per-cell boxes instead of one unified rectangle — replaced with a hole-based check (wrap only when occupied indices are non-contiguous, matching the core `groupWraps` rule). (2) Group overlay rects extended 2px past the SVG canvas on the right/bottom edge, so their borders were clipped/invisible — added canvas padding. (3) Default grid-cell borders used `stroke = border-color` = same colour as fill, rendering cell borders invisible — switched default stroke to `border-light`. (4) Truth table did not adapt to POS: the first-cell focus button always targeted a 1-minterm, relevant rows (1s in SOP / 0s in POS) were not emphasised, the row badge always showed minterm notation, and the empty-cell footnote was SOP-biased — made the panel mode-aware. (5) Simplified Expression / Logic Circuit Diagram / Verify sections had no visible separation (SectionCard is borderless), and the Logic Circuit vanished with no message when no groups existed for the active mode — added borders to the result sections and an empty-state note.
+- **Reasoning**: Users reported that same-row groups of 4 looked fragmented, group borders disappeared on the bottom/right edges, POS did not visibly drive the truth table, and the result sections appeared fused into one column. All root causes were presentation-layer issues (overlay geometry, SVG clipping, mode-agnostic labels); no core/educational math was changed.
+- **Impact**: Full-width and full-height groups now render as single connected rectangles; group borders remain visible at every edge; grid cells show subtle separators; the truth table reflects SOP/POS mode (target emphasis, M/motif badges, correct focus target); result sections are visually distinct with an empty-circuit placeholder. All existing kmap tests pass; TypeScript build clean; no new lint errors.
+- **Files Modified**:
+  - `src/simulators/kmap/components/KMapGrid.tsx` - Hole-based wrap detection, canvas padding, visible default cell stroke
+  - `src/simulators/kmap/components/FiveVarGrid.tsx` - Hole-based wrap detection, canvas padding, visible default cell stroke
+  - `src/simulators/kmap/components/TruthTablePanel.tsx` - Mode-aware focus target, row emphasis, M/maxterm badge, footnote
+  - `src/simulators/kmap/components/LogicCircuit.tsx` - Section border for visual separation
+  - `src/simulators/kmap/components/VerifyPanel.tsx` - Section border for visual separation
+  - `src/simulators/kmap/components/ResultsTabContent.tsx` - Empty-circuit state message
+
 ### [Refactored] - 2026-09-02 20:46
 - **Component**: Navigation System Unification
 - **Description**: Unified the navigation system to use a single MobileNav component across all screen sizes. Removed MobileBottomNav component and its usage from main.tsx, removed ResponsiveSidebar component (unused), eliminated desktop navigation from BrandHeader, updated MobileNav to show hamburger button on all screen sizes (removed breakpoint logic), removed body scroll prevention dependency on mobile state, cleaned up component exports in ui/index.ts.
