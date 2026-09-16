@@ -58,6 +58,7 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
   const [cellInfoPinned, setCellInfoPinned] = useState<number | null>(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
+  const [showRightPanel, setShowRightPanel] = useState(true)
 
   const variableCount = variables.length as 2 | 3 | 4 | 5
   const is5Var = variables.length === 5
@@ -181,7 +182,8 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
           onClear={clearKMap}
         />
 
-        <div className="grid items-start md:grid-cols-2 gap-section">
+        <div className="relative">
+        <div className={`grid items-start gap-section ${showRightPanel || viewMode !== 'kmap' ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
           {/* K-Map Grid */}
           <div className="kmap-grid-container rounded-lg px-1 py-1 md:py-2 md:px-2.5 pb-1.5 sm:px-2" style={bg.card}>
             <div className="flex items-center justify-between" style={{ minHeight: '44px' }}>
@@ -202,7 +204,7 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
                   {showGroups ? 'Groups On' : 'Groups Off'}
                 </button>
                 <div className="flex items-center gap-control-group" role="group" aria-label="View mode">
-                  {(['kmap', 'both', 'truth', 'split'] as const).map((mode) => (
+                  {(['kmap', 'both', 'truth'] as const).map((mode) => (
                     <button
                       key={mode}
                       onClick={() => setViewMode(mode)}
@@ -216,7 +218,7 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
                       onMouseEnter={(e) => { if (viewMode !== mode) e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)' }}
                       onMouseLeave={(e) => { if (viewMode !== mode) e.currentTarget.style.backgroundColor = 'transparent' }}
                     >
-                      {mode === 'truth' ? 'Truth-Table' : mode === 'kmap' ? 'K-Map' : mode === 'split' ? 'Split' : 'Both'}
+                      {mode === 'truth' ? 'Truth-Table' : mode === 'kmap' ? 'K-Map' : 'Both'}
                     </button>
                   ))}
                 </div>
@@ -286,7 +288,7 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
                   />
                 )}
 
-                {viewMode !== 'kmap' && (
+                {showRightPanel && viewMode !== 'kmap' && (
                   <div className="mt-2 sm:mt-3">
                     <TruthTablePanel
                       kmap={kmap}
@@ -300,35 +302,37 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
             )}
           </div>
 
-          {/* Results Panel - Tabbed Interface */}
-          <TabbedPanel
-              resultsTab={
-                <ResultsTabContent
-                  showSOP={showSOP}
-                  setShowSOP={setShowSOP}
-                  simplifiedExpression={simplifiedExpression}
-                  originalExpression={originalExpression}
-                  sopGroups={simplification.sopGroups.map(g => ({ cells: Array.from(g.cells), productText: g.productText, sumText: g.sumText }))}
-                  posGroups={simplification.posGroups.map(g => ({ cells: Array.from(g.cells), productText: g.productText, sumText: g.sumText }))}
-                  sopTerms={sopTerms}
-                  posTerms={posTerms}
-                  kmap={kmap}
-                  selectedGroup={selectedGroup}
-                  groupValidation={groupValidation ? { valid: groupValidation.valid, issues: groupValidation.issues?.map(i => ({ message: i.message })) } : null}
-                  groupedSummary={groupedSummary ? { reasons: groupedSummary.reasons.map(r => ({ text: r.text })) } : null}
-                  sopGroupsData={fullSimplification.sopGroups}
-                  posGroupsData={fullSimplification.posGroups}
-                  pdfExportButton={
-                    <PdfExportButton
-                      kmap={kmap}
-                      simplifiedExpression={simplifiedExpression}
-                      originalExpression={originalExpression}
-                      showSOP={showSOP}
-                      sopTerms={sopTerms}
-                      posTerms={posTerms}
-                      groupCount={(showSOP ? simplification.sopGroups : simplification.posGroups).length}
-                    />
-                  }
+          {/* Right section: tabbed results panel — truth table takes its place when collapsed */}
+          {showRightPanel ? (
+            <div id="kmap-right-section" className="min-w-0">
+              <TabbedPanel
+                resultsTab={
+                  <ResultsTabContent
+                    showSOP={showSOP}
+                    setShowSOP={setShowSOP}
+                    simplifiedExpression={simplifiedExpression}
+                    originalExpression={originalExpression}
+                    sopGroups={simplification.sopGroups.map(g => ({ cells: Array.from(g.cells), productText: g.productText, sumText: g.sumText }))}
+                    posGroups={simplification.posGroups.map(g => ({ cells: Array.from(g.cells), productText: g.productText, sumText: g.sumText }))}
+                    sopTerms={sopTerms}
+                    posTerms={posTerms}
+                    kmap={kmap}
+                    selectedGroup={selectedGroup}
+                    groupValidation={groupValidation ? { valid: groupValidation.valid, issues: groupValidation.issues?.map(i => ({ message: i.message })) } : null}
+                    groupedSummary={groupedSummary ? { reasons: groupedSummary.reasons.map(r => ({ text: r.text })) } : null}
+                    sopGroupsData={fullSimplification.sopGroups}
+                    posGroupsData={fullSimplification.posGroups}
+                    pdfExportButton={
+                      <PdfExportButton
+                        kmap={kmap}
+                        simplifiedExpression={simplifiedExpression}
+                        originalExpression={originalExpression}
+                        showSOP={showSOP}
+                        sopTerms={sopTerms}
+                        posTerms={posTerms}
+                        groupCount={(showSOP ? simplification.sopGroups : simplification.posGroups).length}
+                      />
+                    }
                     expressionChain={
                       <ExpressionCircuitChain
                         simplifiedExpression={simplifiedExpression}
@@ -337,21 +341,71 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
                         kmap={kmap}
                       />
                     }
-                />
-              }
-              learningTab={
-                <LearningTabContent
-                  showSOP={showSOP}
-                  walkthroughSolution={walkthroughSolution}
-                  onWalkthroughHighlight={handleWalkthroughHighlight}
-                />
-              }
-              examplesTab={
-                <ExamplesTabContent
-                  onLoadExample={handleLoadExample}
-                />
-              }
-          />
+                  />
+                }
+                learningTab={
+                  <LearningTabContent
+                    showSOP={showSOP}
+                    walkthroughSolution={walkthroughSolution}
+                    onWalkthroughHighlight={handleWalkthroughHighlight}
+                  />
+                }
+                examplesTab={
+                  <ExamplesTabContent
+                    onLoadExample={handleLoadExample}
+                  />
+                }
+              />
+            </div>
+          ) : (
+            viewMode !== 'kmap' && (
+              <div id="kmap-right-section" className="min-w-0">
+                <div
+                  className="rounded-lg border elevation-tertiary tabbed-panel"
+                  style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
+                >
+                  <TruthTablePanel
+                    kmap={kmap}
+                    showSOP={showSOP}
+                    highlightedCell={hoveredCell ?? cellInfoPinned}
+                    onSelectCell={(minterm) => setHoveredCell(minterm)}
+                  />
+                </div>
+              </div>
+            )
+          )}
+        </div>
+
+        {/* Hide/show toggle for the right section, centered on the right edge */}
+        <button
+          type="button"
+          onClick={() => setShowRightPanel((p) => !p)}
+          aria-expanded={showRightPanel}
+          aria-label={showRightPanel ? 'Hide results panel' : 'Show results panel'}
+          aria-controls={showRightPanel || viewMode !== 'kmap' ? 'kmap-right-section' : undefined}
+          title={
+            showRightPanel
+              ? 'Hide the results panel (the truth table moves to the right)'
+              : 'Show the results panel'
+          }
+          className="fixed z-10 flex items-center justify-center rounded-l-md touch-action-manipulation"
+          style={{
+            top: '50%',
+            right: '0',
+            transform: 'translateY(-50%)',
+            width: '26px',
+            minHeight: '44px',
+            backgroundColor: 'var(--accent-primary)',
+            color: '#fff',
+            boxShadow: 'var(--shadow-accent)',
+            border: '1px solid color-mix(in srgb, var(--accent-primary) 50%, #ffffff)',
+            cursor: 'pointer',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            {showRightPanel ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}
+          </svg>
+        </button>
         </div>
 
         {/* Connect Representations: Define & Analyze — full width below both panels */}

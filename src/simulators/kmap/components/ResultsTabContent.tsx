@@ -283,7 +283,15 @@ export default function ResultsTabContent({
             />
           )
         }
-        return null
+        return (
+          <div
+            className="rounded-lg p-2 text-xs"
+            style={{ border: '1px dashed var(--border-light)', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}
+          >
+            No circuit yet — set some cells to {showSOP ? '1' : '0'} in the K-map to generate the
+            {showSOP ? ' SOP' : ' POS'} gate diagram.
+          </div>
+        )
       })()}
 
       {/* Expression-Circuit-TruthTable Chain */}

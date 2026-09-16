@@ -15,36 +15,59 @@ interface LayoutInfo {
   gateHeight: number
   gateSpacing: number
   outputX: number
+  /** Vertical centre of the whole diagram (used for the second-level gate & output). */
+  outputY: number
   svgWidth: number
   svgHeight: number
   inputY: (index: number) => number
   gateY: (index: number) => number
 }
 
-function computeLayout(termCount: number, varCount: number): LayoutInfo {
-  const inputX = 50
-  const gateStartX = 200
-  const gateWidth = 60
+/**
+ * Vertical layout for the gate diagram.
+ *
+ * A shared row grid (48px per row) holds both the input rails and the
+ * first-level gates, so a circuit with many terms never overflows the canvas
+ * (the old centring formula could push the top gate out of view) and a
+ * circuit with many variables keeps its gates centred on the input band.
+ */
+function computeLayout(
+  termCount: number,
+  varCount: number,
+  maxTermLabelLen: number,
+  exprLength: number,
+): LayoutInfo {
+  const inputX = 40
+  const gateStartX = 190
   const gateHeight = 36
-  const gateSpacing = 52
-  const outputX = gateStartX + gateWidth + 80
+  const rowStep = 48
+  const vTop = 48
 
-  const inputY = (i: number) => 40 + i * 28
-  const gateY = (i: number) => {
-    const totalHeight = (termCount - 1) * gateSpacing
-    const startY = (varCount * 28 + 40 - totalHeight) / 2
-    return startY + i * gateSpacing
-  }
+  const gateWidth = Math.max(64, 18 + maxTermLabelLen * 7)
+
+  const maxRows = Math.max(Math.max(varCount, termCount), 1)
+  const bandMid = vTop + ((maxRows - 1) * rowStep) / 2
+  const gatesTotal = (termCount - 1) * rowStep
+  const gatesTop =
+    termCount > 1 ? bandMid - gatesTotal / 2 : bandMid - gateHeight / 2
+
+  const outputX = gateStartX + gateWidth + 90
+  const svgWidth = outputX + 64 + exprLength * 8
+  const svgHeight = vTop + (maxRows - 1) * rowStep + gateHeight + 28
+
+  const inputY = (i: number) => vTop + i * rowStep
+  const gateY = (i: number) => gatesTop + i * rowStep
 
   return {
     inputX,
     gateStartX,
     gateWidth,
     gateHeight,
-    gateSpacing,
+    gateSpacing: rowStep,
     outputX,
-    svgWidth: outputX + 120,
-    svgHeight: Math.max(varCount * 28 + 60, termCount * gateSpacing + 80),
+    outputY: bandMid,
+    svgWidth,
+    svgHeight,
     inputY,
     gateY,
   }
@@ -79,7 +102,7 @@ function GateInputWire({ x1, y1, x2, y2, hasNot }: { x1: number; y1: number; x2:
   return (
     <>
       <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--text-secondary)" strokeWidth={1} />
-      {hasNot && <NotCircle cx={x2 + 6} cy={y2} />}
+      {hasNot && <NotCircle cx={x2 - 6} cy={y2} />}
     </>
   )
 }
@@ -94,8 +117,19 @@ export default function LogicCircuit({ simplifiedExpression, groups, mode }: Log
       }
     }
     const variables = [...allVars].sort()
-    return computeLayout(termCount, variables.length)
-  }, [groups, mode])
+    const termTexts = groups.map((g) =>
+      mode === 'sop' ? g.productText : g.sumText,
+    )
+    const maxTermLabelLen = termTexts.length
+      ? Math.max(...termTexts.map((t) => t.length))
+      : 0
+    return computeLayout(
+      termCount,
+      variables.length,
+      maxTermLabelLen,
+      simplifiedExpression.length,
+    )
+  }, [groups, mode, simplifiedExpression])
 
   const variables = useMemo(() => {
     const allVars = new Set<string>()
@@ -122,7 +156,12 @@ export default function LogicCircuit({ simplifiedExpression, groups, mode }: Log
   })
 
   return (
-    <SectionCard title="Logic Circuit Diagram" subtitle={`Auto-generated from the simplified ${mode.toUpperCase()} expression.`} defaultOpen={false}>
+    <SectionCard
+      title="Logic Circuit Diagram"
+      subtitle={`Auto-generated from the simplified ${mode.toUpperCase()} expression.`}
+      className="section-card-secondary"
+      defaultOpen={false}
+    >
       <div className="rounded-lg border overflow-x-auto" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-card)' }}>
         <svg
           width={layout.svgWidth}
@@ -212,7 +251,7 @@ export default function LogicCircuit({ simplifiedExpression, groups, mode }: Log
                 x1={layout.gateStartX + layout.gateWidth}
                 y1={gateY + layout.gateHeight / 2}
                 x2={layout.outputX - layout.gateWidth}
-                y2={layout.svgHeight / 2}
+                y2={layout.outputY}
               />
             )
           })}
@@ -220,7 +259,7 @@ export default function LogicCircuit({ simplifiedExpression, groups, mode }: Log
           {/* Second-level gate */}
           {(() => {
             const secondGateX = layout.outputX - layout.gateWidth
-            const secondGateY = layout.svgHeight / 2 - layout.gateHeight / 2
+            const secondGateY = layout.outputY - layout.gateHeight / 2
             return (
               <g>
                 {isSOP ? (
@@ -244,9 +283,9 @@ export default function LogicCircuit({ simplifiedExpression, groups, mode }: Log
           {/* Output wire */}
           <line
             x1={layout.outputX}
-            y1={layout.svgHeight / 2}
+            y1={layout.outputY}
             x2={layout.outputX + 50}
-            y2={layout.svgHeight / 2}
+            y2={layout.outputY}
             stroke="var(--text-secondary)"
             strokeWidth={1.5}
           />
@@ -254,7 +293,7 @@ export default function LogicCircuit({ simplifiedExpression, groups, mode }: Log
           {/* Output label */}
           <text
             x={layout.outputX + 55}
-            y={layout.svgHeight / 2 + 5}
+            y={layout.outputY + 5}
             className="text-sm font-bold"
             style={{ fill: 'var(--accent-primary)' }}
           >

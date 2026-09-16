@@ -57,7 +57,7 @@ export default function App({ currentView: externalCurrentView, setCurrentView: 
 
   if (currentView === 'gates') {
     return (
-      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100'}`}>
         <Suspense fallback={<LoadingSpinner centered />}>
           <GateSimulator onBackToHome={() => finalSetCurrentView('home')} />
         </Suspense>
@@ -67,7 +67,7 @@ export default function App({ currentView: externalCurrentView, setCurrentView: 
 
   if (currentView === 'circuit') {
     return (
-      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100'}`}>
         <Suspense fallback={<LoadingSpinner centered />}>
           <CircuitDesigner onBackToHome={() => finalSetCurrentView('home')} />
         </Suspense>
@@ -77,7 +77,7 @@ export default function App({ currentView: externalCurrentView, setCurrentView: 
 
   if (currentView === 'numbersystems') {
     return (
-      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100'}`}>
         <Suspense fallback={<LoadingSpinner centered />}>
           <NumberSystemsSimulator onBackToHome={() => finalSetCurrentView('home')} key="numbersystems" />
         </Suspense>
@@ -87,7 +87,7 @@ export default function App({ currentView: externalCurrentView, setCurrentView: 
 
   if (currentView === 'faq') {
     return (
-      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100'}`}>
         <Suspense fallback={<LoadingSpinner centered />}>
           <FaqPage onBackToHome={() => finalSetCurrentView('home')} />
         </Suspense>
@@ -98,7 +98,7 @@ export default function App({ currentView: externalCurrentView, setCurrentView: 
   if (currentView === 'kmap' || currentView === 'practice') {
     if (currentView === 'kmap') {
       return (
-        <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+        <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100'}`}>
           <Suspense fallback={<LoadingSpinner centered />}>
             <KMapSimulator
               onBackToHome={() => finalSetCurrentView('home')}
@@ -109,7 +109,7 @@ export default function App({ currentView: externalCurrentView, setCurrentView: 
       )
     }
     return (
-      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+      <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100'}`}>
         <nav className="px-3 sm:px-4 py-1.5 flex items-center gap-2 sm:gap-4 border-b flex-wrap" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
           <button
             onClick={() => finalSetCurrentView('home')}

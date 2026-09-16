@@ -21,10 +21,10 @@ export function nextCellValue(current: CellValue): CellValue {
 
 /**
  * Validate and normalize variable names.
- * Ensures variables are single letters and limits to 2-4 variables.
+ * Ensures variables are single letters and limits to 2-5 variables.
  */
 export function validateVariables(variables: readonly string[]): string[] {
-  const validated = variables.filter((v) => /^[A-Za-z]$/.test(v)).slice(0, 4)
+  const validated = variables.filter((v) => /^[A-Za-z]$/.test(v)).slice(0, 5)
   if (validated.length < 2) {
     return ['A', 'B']
   }

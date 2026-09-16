@@ -58,7 +58,7 @@ export default function TruthTablePanel({
           <tbody>
             {rows.map(({ minterm, bits, value }) => {
               const isActive = highlightedCell === minterm
-              const isOn = value === 1
+              const isTarget = showSOP ? value === 1 : value === 0
               return (
                 <tr
                   key={minterm}
@@ -66,7 +66,7 @@ export default function TruthTablePanel({
                   style={{
                     backgroundColor: isActive
                       ? 'var(--accent-bg)'
-                      : isOn
+                      : isTarget
                         ? 'var(--success-bg)'
                         : 'var(--bg-tertiary)',
                   }}
@@ -94,7 +94,7 @@ export default function TruthTablePanel({
                     {value === null ? '—' : value}
                   </td>
                   <td className="px-2 py-1.5 border font-mono" style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
-                    <Badge variant="neutral" size="xs" compact>m{minterm}</Badge>
+                    <Badge variant="neutral" size="xs" compact>{showSOP ? `m${minterm}` : `M${minterm}`}</Badge>
                   </td>
                 </tr>
               )
@@ -105,8 +105,8 @@ export default function TruthTablePanel({
 
       {rows.some((r) => r.value === null) && (
         <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-          Empty cells (—) are treated as 0 for output; set them in the K-map to complete the
-          function.
+          Empty cells (—) read as 0 in the output. In SOP only explicit 1s are grouped; in POS only
+          explicit 0s are grouped. Set the empty cells in the K-map to complete the function.
         </p>
       )}
 
@@ -125,12 +125,12 @@ export default function TruthTablePanel({
           className="w-full rounded border px-3 py-2 text-left text-xs sm:text-sm transition-colors touch-action-manipulation"
           style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
           onClick={() => {
-            const firstOn = rows.find((r) => r.value === 1)
-            if (firstOn) onSelectCell(firstOn.minterm)
+            const target = rows.find((r) => (showSOP ? r.value === 1 : r.value === 0))
+            if (target) onSelectCell(target.minterm)
           }}
           data-testid="truth-table-focus-minterm"
         >
-          Focus first 1-minterm (the K-map cell used in {showSOP ? 'SOP' : 'this mode'})
+          Focus first {showSOP ? '1-minterm' : '0-cell'} (the K-map cell grouped in {showSOP ? 'SOP' : 'POS'})
         </button>
 
         <details className="group">

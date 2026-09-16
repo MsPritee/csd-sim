@@ -40,8 +40,8 @@ describe('KMap Use Cases', () => {
       expect(validateVariables(['A', 'B1', 'C', ''])).toEqual(['A', 'C'])
     })
 
-    it('should limit to 4 variables', () => {
-      expect(validateVariables(['A', 'B', 'C', 'D', 'E'])).toEqual(['A', 'B', 'C', 'D'])
+    it('should limit to 5 variables', () => {
+      expect(validateVariables(['A', 'B', 'C', 'D', 'E', 'F'])).toEqual(['A', 'B', 'C', 'D', 'E'])
     })
 
     it('should provide default variables if less than 2', () => {
@@ -62,6 +62,12 @@ describe('KMap Use Cases', () => {
     it('should handle invalid variable names', () => {
       const kmap = createKMapWithVariables(['A', 'invalid', 'C'])
       expect(kmap.layout.variables).toEqual(['A', 'C'])
+    })
+
+    it('should build a 5-variable K-map', () => {
+      const kmap = createKMapWithVariables(['A', 'B', 'C', 'D', 'E'])
+      expect(kmap.layout.variables).toEqual(['A', 'B', 'C', 'D', 'E'])
+      expect(kmap.cells.flat()).toHaveLength(32)
     })
   })
 

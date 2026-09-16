@@ -67,6 +67,7 @@ export default function VerifyPanel({
     <SectionCard
       title="Verify"
       subtitle={`Does the simplified ${showSOP ? 'SOP' : 'POS'} expression reproduce the K-map truth table on every row?`}
+      className="section-card-secondary"
       headerRight={
         <Badge variant={comparison.equal ? 'success' : 'error'} size="sm" data-testid="verify-badge">
           {comparison.equal ? '✓ Equivalent' : '✗ Differs'}
