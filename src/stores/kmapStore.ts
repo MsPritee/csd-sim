@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import {
   createKMapWithVariables,
+  renameKMapVariables,
   setCellValue,
 } from '../application/kmap'
 import {
@@ -54,10 +55,13 @@ export const useKMapStore = create<KMapState>((set) => {
     showMintermNumbers: true,
     hoveredCell: null,
 
-    setVariables: (variables) => {
-      const next = createKMapWithVariables(variables)
-      set({ variables: next.layout.variables, model: next, selectedCells: new Set() })
-    },
+    setVariables: (variables) =>
+      set((state) => {
+        // Rebuild with the new names while preserving entered cell values
+        // (re-painted by minterm with the appropriate bit shift).
+        const next = renameKMapVariables(state.model, variables)
+        return { variables: next.layout.variables, model: next, selectedCells: new Set() }
+      }),
 
     setModel: (model) => set({ model }),
 

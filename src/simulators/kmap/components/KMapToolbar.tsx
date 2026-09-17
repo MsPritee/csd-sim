@@ -3,6 +3,8 @@ import type { CellValue } from '../../../core/kmap'
 import PrimaryToolbar from './PrimaryToolbar'
 import SecondaryToolbar from './SecondaryToolbar'
 import ButtonGroup from './ButtonGroup'
+// import FiveVarAxisControls from './FiveVarAxisControls' // LAYOUT FEATURE DISABLED (plane var + row/col swap)
+import VariableNameEditor from './VariableNameEditor'
 
 interface KMapToolbarProps {
   variableCount: 2 | 3 | 4 | 5
@@ -12,6 +14,13 @@ interface KMapToolbarProps {
   onCurrentValueChange: (value: CellValue) => void
   onToggleMintermNumbers: () => void
   onClear: () => void
+  // showAxisLayout?: boolean // LAYOUT FEATURE DISABLED
+  variables?: readonly string[]
+  onVariablesChange?: (names: string[]) => void
+  // planeVar?: string // LAYOUT FEATURE DISABLED
+  // onPlaneVarChange?: (v: string) => void // LAYOUT FEATURE DISABLED
+  // swapAxes?: boolean // LAYOUT FEATURE DISABLED
+  // onSwapAxesChange?: (swapped: boolean) => void // LAYOUT FEATURE DISABLED
 }
 
 export default function KMapToolbar({
@@ -22,6 +31,13 @@ export default function KMapToolbar({
   onCurrentValueChange,
   onToggleMintermNumbers,
   onClear,
+  // showAxisLayout = false, // LAYOUT FEATURE DISABLED
+  variables = [],
+  onVariablesChange,
+  // planeVar = 'E', // LAYOUT FEATURE DISABLED
+  // onPlaneVarChange, // LAYOUT FEATURE DISABLED
+  // swapAxes = false, // LAYOUT FEATURE DISABLED
+  // onSwapAxesChange, // LAYOUT FEATURE DISABLED
 }: KMapToolbarProps) {
   const [showSecondary, setShowSecondary] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
@@ -36,14 +52,31 @@ export default function KMapToolbar({
   return (
     <div className="toolbar-primary kmap-toolbar rounded-lg p-1 sm:p-1.5 md:p-2 mb-1 sm:mb-1.5">
       <div className="flex flex-wrap gap-control-group items-center justify-between">
-        <div className="flex-1 min-w-0 overflow-x-auto -mx-0.5 px-0.5 sm:mx-0 sm:px-0">
-          <PrimaryToolbar
-            variableCount={variableCount}
-            currentValue={currentValue}
-            onVariableCountChange={onVariableCountChange}
-            onCurrentValueChange={onCurrentValueChange}
-          />
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap gap-control-group items-center">
+            <PrimaryToolbar
+              variableCount={variableCount}
+              currentValue={currentValue}
+              onVariableCountChange={onVariableCountChange}
+              onCurrentValueChange={onCurrentValueChange}
+            />
+
+            {/*
+              LAYOUT FEATURE DISABLED — 5-variable plane/row-col layout picker.
+              {showAxisLayout && (
+                <FiveVarAxisControls
+                  variables={variables}
+                  planeVar={planeVar}
+                  onPlaneVarChange={onPlaneVarChange ?? (() => {})}
+                  swapAxes={swapAxes}
+                  onSwapAxesChange={onSwapAxesChange ?? (() => {})}
+                />
+              )}
+            */}
+          </div>
         </div>
+
+        <VariableNameEditor variables={variables} onChange={onVariablesChange} />
 
         <ButtonGroup>
           <button

@@ -7,10 +7,11 @@ import {
   cycleCellValue,
   isActionAllowed,
   deriveKMapValues,
+  applyAssignment,
   type KMapMode,
   type KMapAction,
 } from '../../../application/kmap'
-import { createKMap } from '../../../core/kmap'
+import { createKMap, buildAssignment, mintermToCell } from '../../../core/kmap'
 
 describe('KMap Use Cases', () => {
   describe('nextCellValue', () => {
@@ -162,6 +163,87 @@ describe('KMap Use Cases', () => {
       expect(derived.zeros).toEqual([])
       expect(derived.dontcares).toEqual([])
       expect(derived.unset).toEqual([0, 1, 2, 3])
+    })
+  })
+
+  describe('applyAssignment', () => {
+    function valueOf(model: ReturnType<typeof createKMap>, minterm: number) {
+      for (const row of model.cells) {
+        for (const cell of row) {
+          if (cell.minterm === minterm) return cell.value
+        }
+      }
+      return null
+    }
+
+    it('should rebuild a flat 5-variable map into a plane map with the same variables', () => {
+      const flat = createKMap(['A', 'B', 'C', 'D', 'E'])
+      const assignment = buildAssignment(['E'], ['A', 'B'], ['C', 'D'])
+      const next = applyAssignment(flat, assignment)
+
+      expect(next.layout.variables).toEqual(['A', 'B', 'C', 'D', 'E'])
+      expect(next.layout.planes).toBe(2)
+      expect(next.layout.planeVariables).toEqual(['E'])
+      expect(next.layout.rowVariables).toEqual(['A', 'B'])
+      expect(next.layout.colVariables).toEqual(['C', 'D'])
+    })
+
+    it('should preserve cell values by minterm when switching to a plane layout', () => {
+      let kmap = createKMap(['A', 'B', 'C', 'D', 'E'])
+      kmap = setCellValue(kmap, 19, 1)
+      kmap = setCellValue(kmap, 0, 0)
+      kmap = setCellValue(kmap, 31, 'X')
+
+      const next = applyAssignment(kmap, buildAssignment(['E'], ['A', 'B'], ['C', 'D']))
+
+      expect(mintermToCell(next, 19)).toEqual({ row: 3, col: 1, plane: 1 })
+      expect(mintermToCell(next, 31)).toEqual({ row: 2, col: 2, plane: 1 })
+      expect(valueOf(next, 19)).toBe(1)
+      expect(valueOf(next, 0)).toBe(0)
+      expect(valueOf(next, 31)).toBe('X')
+    })
+
+    it('should preserve values when the plane variable changes', () => {
+      let kmap = createKMap(['A', 'B', 'C', 'D', 'E'])
+      kmap = setCellValue(kmap, 19, 1)
+      kmap = setCellValue(kmap, 0, 1)
+
+      const ePlane = applyAssignment(kmap, buildAssignment(['E'], ['A', 'B'], ['C', 'D']))
+      const cPlane = applyAssignment(ePlane, buildAssignment(['C'], ['A', 'B'], ['D', 'E']))
+
+      expect(mintermToCell(cPlane, 19)).toEqual({ row: 3, col: 2, plane: 0 })
+      expect(valueOf(cPlane, 19)).toBe(1)
+      expect(valueOf(cPlane, 0)).toBe(1)
+    })
+
+    it('should preserve values when rows and columns are swapped', () => {
+      let kmap = createKMap(['A', 'B', 'C', 'D', 'E'])
+      kmap = setCellValue(kmap, 19, 1)
+
+      const ePlane = applyAssignment(kmap, buildAssignment(['E'], ['A', 'B'], ['C', 'D']))
+      const swapped = applyAssignment(ePlane, buildAssignment(['E'], ['C', 'D'], ['A', 'B']))
+
+      expect(mintermToCell(swapped, 19)).toEqual({ row: 1, col: 3, plane: 1 })
+      expect(valueOf(swapped, 19)).toBe(1)
+    })
+
+    it('should throw for an assignment that does not cover the variables exactly', () => {
+      const kmap = createKMap(['A', 'B', 'C', 'D', 'E'])
+      expect(() =>
+        applyAssignment(kmap, buildAssignment(['E'], ['A', 'B'], ['C', 'F']))
+      ).toThrow(RangeError)
+      expect(() =>
+        applyAssignment(kmap, buildAssignment([], ['A', 'B'], ['C', 'D']))
+      ).toThrow(RangeError)
+    })
+
+    it('should work for 4-variable custom assignments', () => {
+      const kmap = createKMap(['A', 'B', 'C', 'D'])
+      const next = applyAssignment(kmap, buildAssignment([], ['A', 'C'], ['B', 'D']))
+      expect(next.layout.planes).toBe(1)
+      expect(next.layout.rowVariables).toEqual(['A', 'C'])
+      expect(next.layout.colVariables).toEqual(['B', 'D'])
+      expect(next.cells.flat()).toHaveLength(16)
     })
   })
 })

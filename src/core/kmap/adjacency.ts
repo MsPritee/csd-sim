@@ -1,15 +1,29 @@
 import { cellAt, mintermToCell, type KMapCell, type KMapModel } from './model'
 import { hammingDistance } from './gray'
 
-export type AdjacencyDirection = 'horizontal' | 'vertical'
+/**
+ * Adjacency for a K-map is defined by the Boolean cube, not by the drawing:
+ * two cells are adjacent when their minterms differ in exactly one variable
+ * (hamming distance 1). On a 2-4 variable flat map this coincides exactly
+ * with orthogonally-adjacent grid cells (including the wrap-around edges).
+ *
+ * For a 5-variable plane model (two stacked 4×4 maps) the grid alone cannot
+ * express the topology, since:
+ *   - the cell at the same position in the other plane is adjacent (only the
+ *     plane variable changes) — this is a third "plane" direction;
+ *   - the horizontal wrap-around of each plane is over that plane's 4-column
+ *     ring, not over the flattened 8-column grid that joins both planes.
+ *
+ * All four public functions below therefore operate on the axis indices
+ * (row, column-within-plane, plane) derived from the model layout instead of
+ * on the flattened grid, keeping every variable count consistent.
+ */
+
+export type AdjacencyDirection = 'horizontal' | 'vertical' | 'plane'
 
 export interface Neighbor {
   readonly cell: KMapCell
   readonly direction: AdjacencyDirection
-}
-
-function cellOf(kmap: KMapModel, minterm: number): { row: number; col: number } {
-  return mintermToCell(kmap, minterm)
 }
 
 function checkBounds(kmap: KMapModel, row: number, col: number): void {
@@ -19,9 +33,48 @@ function checkBounds(kmap: KMapModel, row: number, col: number): void {
   }
 }
 
+/** Number of grid columns inside a single plane (the col-axis ring size). */
+function planeColCount(kmap: KMapModel): number {
+  const { cols, planes } = kmap.layout
+  return planes > 1 ? cols / planes : cols
+}
+
+interface AxisPosition {
+  readonly row: number
+  readonly col: number
+  readonly plane: number
+}
+
+function positionOf(kmap: KMapModel, minterm: number): AxisPosition {
+  const { row, col, plane } = mintermToCell(kmap, minterm)
+  return { row, col, plane: plane ?? 0 }
+}
+
 /**
- * Returns the adjacent cells for grid position (row, col), including
- * wrap-around neighbors (last row ↔ first row, last col ↔ first col).
+ * Classifies the adjacency between two minterms by which axis changed.
+ * Returns null unless the pair differs in exactly one variable (Gray
+ * adjacency invariant). A single flipped variable changes exactly one axis,
+ * so the axis comparison is unambiguous.
+ */
+function directionBetween(
+  kmap: KMapModel,
+  a: number,
+  b: number,
+): AdjacencyDirection | null {
+  if (hammingDistance(a, b) !== 1) return null
+  const pa = positionOf(kmap, a)
+  const pb = positionOf(kmap, b)
+  if (pa.plane !== pb.plane) return 'plane'
+  if (pa.row !== pb.row) return 'vertical'
+  return 'horizontal'
+}
+
+/**
+ * Returns the adjacent cells for the grid position (row, col), including the
+ * wrap-around neighbours of each axis and, on plane models, the mirrored cell
+ * in the other plane. The position is addressed on the flattened grid (column =
+ * plane × plane-width + in-plane column) so it stays compatible with the
+ * previous grid-based API, but adjacency itself is derived from the bit cube.
  */
 export function neighborsOf(
   kmap: KMapModel,
@@ -31,47 +84,46 @@ export function neighborsOf(
   const { rows, cols } = kmap.layout
   checkBounds(kmap, row, col)
 
-  const left: Neighbor = { cell: cellAt(kmap, row, (col - 1 + cols) % cols), direction: 'horizontal' }
-  const right: Neighbor = { cell: cellAt(kmap, row, (col + 1) % cols), direction: 'horizontal' }
-  const up: Neighbor = { cell: cellAt(kmap, (row - 1 + rows) % rows, col), direction: 'vertical' }
-  const down: Neighbor = { cell: cellAt(kmap, (row + 1) % rows, col), direction: 'vertical' }
-  return [left, right, up, down]
+  const center = cellAt(kmap, row, col).minterm
+  const n = kmap.layout.variables.length
+  const colCount = planeColCount(kmap)
+
+  const neighbors: Neighbor[] = []
+  for (let bit = 0; bit < n; bit++) {
+    const other = center ^ (1 << bit)
+    const { row: r, col: c, plane } = positionOf(kmap, other)
+    const flatCol = plane * colCount + c
+    if (r >= rows || flatCol < 0 || flatCol >= cols) continue
+    neighbors.push({
+      cell: cellAt(kmap, r, flatCol),
+      direction: directionBetween(kmap, center, other)!,
+    })
+  }
+  return neighbors
 }
 
-/** True when the two minterms occupy adjacent grid cells (wrap allowed). */
+/** True when the two minterms occupy adjacent cells (wrap and cross-plane allowed). */
 export function isAdjacent(kmap: KMapModel, a: number, b: number): boolean {
   return adjacencyDirection(kmap, a, b) !== null
 }
 
 /**
- * Classifies the adjacency between two minterms as horizontal or vertical.
- * Returns null when the cells are not adjacent.
+ * Classifies the adjacency between two minterms as horizontal, vertical, or
+ * plane (cross-plane mirror). Returns null when the cells are not adjacent.
  */
 export function adjacencyDirection(
   kmap: KMapModel,
   a: number,
   b: number,
 ): AdjacencyDirection | null {
-  const { row: ra, col: ca } = cellOf(kmap, a)
-  const { row: rb, col: cb } = cellOf(kmap, b)
-
-  if (ra === rb) {
-    const diff = Math.abs(ca - cb)
-    const isAdjacent = diff === 1 || (kmap.layout.cols > 2 && diff === kmap.layout.cols - 1)
-    return isAdjacent ? 'horizontal' : null
-  }
-  if (ca === cb) {
-    const diff = Math.abs(ra - rb)
-    const isAdjacent = diff === 1 || (kmap.layout.rows > 2 && diff === kmap.layout.rows - 1)
-    return isAdjacent ? 'vertical' : null
-  }
-  return null
+  return directionBetween(kmap, a, b)
 }
 
 /** Adjacent cells (as minterms) for a given minterm. */
 export function adjacentMinterms(kmap: KMapModel, minterm: number): number[] {
-  const { row, col } = cellOf(kmap, minterm)
-  return neighborsOf(kmap, row, col).map((n) => n.cell.minterm)
+  const { row, col, plane } = positionOf(kmap, minterm)
+  const colCount = planeColCount(kmap)
+  return neighborsOf(kmap, row, plane * colCount + col).map((n) => n.cell.minterm)
 }
 
 /** Two cells must differ in exactly one variable (Gray adjacency invariant). */

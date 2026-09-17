@@ -1,4 +1,4 @@
-import { cellAt, mintermToCell, type KMapModel } from './model'
+import { cellAt, cellToMinterm, mintermToCell, type KMapModel } from './model'
 
 export type Group = readonly number[]
 
@@ -44,19 +44,71 @@ function isCyclicContiguous(indices: readonly number[], size: number): boolean {
   return gaps.filter((gap) => gap > 1).length === 1
 }
 
-/** Rows and columns occupied by a group. */
+/** Rows and columns occupied by a group (axis indices within a single plane). */
 export function occupiedAxes(
   kmap: KMapModel,
   cells: Group,
 ): { rows: number[]; cols: number[] } {
+  const { rows, cols } = occupiedAxesIncludingPlanes(kmap, cells)
+  return { rows, cols }
+}
+
+/** Per-axis index sets of a group: row, column-within-plane, and plane. */
+function occupiedAxesIncludingPlanes(
+  kmap: KMapModel,
+  cells: Group,
+): { rows: number[]; cols: number[]; planes: number[] } {
   const rows = new Set<number>()
   const cols = new Set<number>()
+  const planes = new Set<number>()
   for (const m of cells) {
-    const { row, col } = mintermToCell(kmap, m)
+    const { row, col, plane } = mintermToCell(kmap, m)
     rows.add(row)
     cols.add(col)
+    planes.add(plane ?? 0)
   }
-  return { rows: [...rows].sort((a, b) => a - b), cols: [...cols].sort((a, b) => a - b) }
+  return {
+    rows: [...rows].sort((a, b) => a - b),
+    cols: [...cols].sort((a, b) => a - b),
+    planes: [...planes].sort((a, b) => a - b),
+  }
+}
+
+/** Number of columns within a single plane (the col-axis ring size). */
+function planeColCount(kmap: KMapModel): number {
+  const { cols, planes } = kmap.layout
+  return planes > 1 ? cols / planes : cols
+}
+
+/**
+ * True when the group is exactly the Cartesian product of a cyclic-contiguous
+ * power-of-two block on each axis: rows × columns(within plane) × planes.
+ * This is the uniform definition of a valid K-map group for every topology:
+ * on a flat map the plane block is the single plane; on a 5-variable plane map
+ * it also accepts groups that mirror across the two 4×4 maps (the plane
+ * variable is eliminated) as well as groups wrapping inside one plane.
+ */
+function isSubcube(kmap: KMapModel, group: Group): boolean {
+  const seen = new Set(group)
+  const { rows, cols, planes } = occupiedAxesIncludingPlanes(kmap, group)
+
+  const rowOk =
+    isPowerOfTwo(rows.length) && isCyclicContiguous(rows, kmap.layout.rows)
+  const colOk =
+    isPowerOfTwo(cols.length) && isCyclicContiguous(cols, planeColCount(kmap))
+  const planeOk =
+    isPowerOfTwo(planes.length) && isCyclicContiguous(planes, kmap.layout.planes)
+  if (!rowOk || !colOk || !planeOk) return false
+
+  // The group must be the FULL cube of these axis blocks (no missing cells).
+  for (const p of planes) {
+    for (const r of rows) {
+      for (const c of cols) {
+        if (!seen.has(cellToMinterm(kmap, r, c, p))) return false
+      }
+    }
+  }
+  return true
 }
 
 /**
@@ -93,20 +145,11 @@ export function validateGroup(kmap: KMapModel, group: Group): GroupValidation {
     })
   }
 
-  const { rows, cols } = occupiedAxes(kmap, group)
-  if (
-    rows.length === 0 ||
-    cols.length === 0 ||
-    rows.length * cols.length !== size ||
-    !isPowerOfTwo(rows.length) ||
-    !isPowerOfTwo(cols.length) ||
-    !isCyclicContiguous(rows, kmap.layout.rows) ||
-    !isCyclicContiguous(cols, kmap.layout.cols)
-  ) {
+  if (seen.size > 0 && !isSubcube(kmap, group)) {
     issues.push({
       kind: 'non-rectangular',
       message:
-        'Cells must form a rectangle — including wrap-around edges — with power-of-2 sides.',
+        'Cells must form a rectangle — including wrap-around edges and, in a 5-variable map, mirrored cells across the two 4×4 maps — with power-of-2 sides.',
     })
   }
 

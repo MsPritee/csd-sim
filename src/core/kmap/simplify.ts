@@ -1,5 +1,6 @@
 import { literalToString, termForGroup } from '../boolean/terms'
 import { isPowerOfTwo } from './grouping'
+import { cellToMinterm } from './model'
 import type { KMapModel } from './model'
 
 export type CellGroup = readonly number[]
@@ -38,31 +39,41 @@ function cyclicBlocks(axis: number): number[][] {
   return blocks
 }
 
-function rectangleCells(kmap: KMapModel, rows: number[], cols: number[]): number[] {
-  const cells: number[] = []
-  const rowSet = new Set(rows)
-  const colSet = new Set(cols)
-  for (const rowCells of kmap.cells) {
-    for (const cell of rowCells) {
-      if (rowSet.has(cell.row) && colSet.has(cell.col)) cells.push(cell.minterm)
-    }
-  }
-  return cells
-}
-
-/** All valid rectangular groups (power-of-two dims, wrap-aware) inside `eligible`. */
+/**
+ * All valid rectangular groups (power-of-two dims, wrap-aware) inside `eligible`.
+ *
+ * Rectangles are enumerated per drawn axis rather than over the flattened
+ * grid: a block on the row axis, a block on the column axis (within a single
+ * plane) and a block on the plane axis. A multi-plane block is only a valid
+ * group when the plane variable is eliminated, i.e. the SAME column block
+ * repeats in every plane — that is how "plane-free" cubes appear on a stacked-
+ * plane 5-variable K-map (the rectangle is mirrored across the fold). For
+ * `planes === 1` this degenerates to exactly the legacy flat-grid enumeration
+ * (one empty plane block), so default layouts are unchanged.
+ */
 function enumerateRectangles(kmap: KMapModel, eligible: ReadonlySet<number>): CellGroup[] {
-  const { rows, cols } = kmap.layout
+  const { rows, planes } = kmap.layout
+  const colCount = planes <= 1 ? kmap.layout.cols : kmap.layout.cols / planes
   const rowBlocks = cyclicBlocks(rows)
-  const colBlocks = cyclicBlocks(cols)
+  const colBlocks = cyclicBlocks(colCount)
+  const planeBlocks = cyclicBlocks(planes)
   const groups: CellGroup[] = []
 
   for (const rowBlock of rowBlocks) {
     for (const colBlock of colBlocks) {
-      const cells = rectangleCells(kmap, rowBlock, colBlock)
-      if (!isPowerOfTwo(cells.length)) continue
-      if (!cells.every((c) => eligible.has(c))) continue
-      groups.push(cells)
+      for (const planeBlock of planeBlocks) {
+        const cells: number[] = []
+        for (const plane of planeBlock) {
+          for (const row of rowBlock) {
+            for (const col of colBlock) {
+              cells.push(cellToMinterm(kmap, row, col, plane))
+            }
+          }
+        }
+        if (!isPowerOfTwo(cells.length)) continue
+        if (!cells.every((c) => eligible.has(c))) continue
+        groups.push(cells)
+      }
     }
   }
   return groups

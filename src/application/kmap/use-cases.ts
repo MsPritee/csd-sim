@@ -1,4 +1,4 @@
-import { createKMap, withValue, simplify, minterms, maxterms, dontCares, type KMapModel, type CellValue } from '../../core/kmap'
+import { createKMap, buildAssignment, withValue, simplify, minterms, maxterms, dontCares, type KMapModel, type CellValue, type KMapAxisAssignment } from '../../core/kmap'
 import { validateGroup } from '../../core/kmap/grouping'
 import { verifySolution, type SolutionVerification, type VerificationOptions } from '../../core/kmap/verification'
 import type { KMapAction, KMapMode } from './actions'
@@ -33,9 +33,23 @@ export function validateVariables(variables: readonly string[]): string[] {
 
 /**
  * Create a K-map with the given variables.
+ *
+ * A 5-variable K-map is represented as two stacked 4×4 planes. The very first
+ * variable is placed on the plane (back) axis and the remaining four on the
+ * row/column axes (first two rows, last two columns) — the standard split used
+ * by the simulator. Building the plane model here (instead of falling back to
+ * a flat 4×8 grid) keeps simplification minimal from the moment the model is
+ * created, matching what the simulator renders.
  */
 export function createKMapWithVariables(variables: readonly string[]): KMapModel {
   const validated = validateVariables(variables)
+  if (validated.length === 5) {
+    const [plane, ...rest] = validated
+    return createKMap(
+      validated,
+      buildAssignment([plane!], rest.slice(0, 2), rest.slice(2)),
+    )
+  }
   return createKMap(validated)
 }
 
@@ -89,6 +103,37 @@ export function loadExample(example: KMapExample): KMapModel {
     }
   })
   return kmap
+}
+
+/**
+ * Rebuild a K-map model with a new axis assignment, preserving all existing
+ * cell values (indexed by minterm).  Throws if the assignment does not cover
+ * exactly the model's variable set — the same validation used by createKMap.
+ */
+export function applyAssignment(
+  model: KMapModel,
+  assignment: KMapAxisAssignment,
+): KMapModel {
+  const variables = [...model.layout.variables]
+
+  // Collect minterm → value for every non-null cell in the current model.
+  const values = new Map<number, CellValue>()
+  for (const cell of model.cells.flat()) {
+    if (cell.value !== null) {
+      values.set(cell.minterm, cell.value)
+    }
+  }
+
+  // createKMap validates the assignment against these variables and throws
+  // a RangeError if it does not cover exactly the same variable set.
+  let next = createKMap(variables, assignment)
+
+  // Paint the preserved values onto the new layout.
+  for (const [minterm, value] of values) {
+    next = withValue(next, minterm, value)
+  }
+
+  return next
 }
 
 /**

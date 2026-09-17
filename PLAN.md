@@ -12,6 +12,27 @@ impact belong in `CHANGELOG.md`, not here.
 
 ## Log
 
+### 2026-09-17 11:30
+- **Added**: Dynamic variable name selection in the K-Map simulator — per-variable dropdown (presets A,B,C,D,W,X,Y,Z,P,Q,R,S,M,N,L,K) + "Other" single-letter custom input via a `+ Names` editor in the toolbar; application-layer batch validation (`validateVariableNames`), name-preserving variable-count scaling (`adjustVariablesToCount` 2–5 vars) and cell-value-preserving renames (`renameKMapVariables`, minterm bit-shift repaint); store `setVariables` preserves entered values; new editor/store/application test suites (43 tests).
+
+### 2026-09-17 10:50
+- **Fixed**: K-Map 5-variable math audit — cube-based adjacency (`adjacency.ts`, Hamming-1 over row/col/plane axes incl. cross-plane + per-plane wrap rings), 3-axis subcube group validation (`grouping.ts`, accepts wrapped in-plane pairs and mirrored across-the-fold groups), plane-aware `createKMapWithVariables` default (5 variables → plane-first/row-next-two/col-last-two), and layout-aware `five-variable.ts` educational module plus the new 29-test `five-variable-math.test.ts` suite.
+
+### 2026-09-17 10:20
+- **Added**: K-Map Phase 5 — standalone plane-first core module (`src/core/kmap/plane.ts`) enforcing the invariant that the plane variable is the MSB (`order[0]`, plane 0 = plane-first minterms 0..15, plane 1 = 16..31), with `buildPlaneLayout`, `planeCellMinterm`/`planePosition` (bijective), `planeGrid`/`planeCells` inspection grids, and `canonicalToPlaneSpace`/`planeSpaceToCanonical` bit-slot translation; exported from the kmap barrel, NOT wired into the simulator yet (16 new tests).
+
+### 2026-09-17 00:50
+- **Added**: K-Map Phase 4 — tests + core fix — new `assignment.test.ts` (17 tests) proving `cellToMinterm`/`mintermToCell` round-trips under every legal axis assignment and canonical-minterm invariance across all layouts (fixing `enumerateRectangles` in `simplify.ts` to enumerate per-axis via `cellToMinterm` so the same Σm simplifies identically anywhere), plus 12 new `FiveVarGrid` tests for plane labels/cell positions per plane variable A–E and parametrized wrap overlay rendering per assignment; flat default behavior byte-identical.
+
+### 2026-09-17 00:35
+- **Added**: K-Map Phase 3 — presentation — `FiveVarGrid` renders plane labels and splits based purely on the model's plane axis (no hardcoded E variable, no `m & 1` math; flat models get a virtual plane model), the Layout control (plane variable dropdown + rows↔cols swap SegmentedControl) moved into the existing grid-card toolbar, and wrap-around group overlays locked down with tests under non-default plane assignments.
+
+### 2026-09-16 23:52
+- **Added**: K-Map Phase 2 — `applyAssignment` application use-case + presentation-driven 5-variable plane axis selectors (plane variable dropdown and rows↔cols swap) that rebuild the model layout while preserving all cell values by minterm.
+
+### 2026-09-16 23:29
+- **Added**: K-Map Phase 1 — explicit axis assignment core model (`layout.axes`, `buildAssignment`, axis-derived `cellToMinterm`/`mintermToCell` with optional plane index, `createKMap` with opt-in plane layouts, fully backward compatible).
+
 ### 2026-09-16 16:01
 - **Fixed**: K-Map wrap-around group overlays rendered as unified solid rectangles (same style as interior groups) in both 2/3/4-var `KMapGrid` and 5-var `FiveVarGrid` planes, via axis contiguous-run block rendering.
 

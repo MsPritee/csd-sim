@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react'
-import { minterms, maxterms, dontCares, simplify } from '../../core/kmap'
+import { useMemo, useState, useEffect } from 'react'
+import { minterms, maxterms, dontCares, simplify, buildAssignment } from '../../core/kmap'
 import {
   performSimplification,
   loadExample,
   validateCellGroup,
   generateWalkthrough,
+  applyAssignment,
+  adjustVariablesToCount,
+  validateVariableNames,
   type KMapSolution,
 } from '../../application/kmap'
 import { explainGroup } from '../../education/adjacency'
@@ -59,15 +62,63 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
   const [showRightPanel, setShowRightPanel] = useState(true)
+  const [planeVar, setPlaneVar] = useState('A')
+  const [swapAxes, setSwapAxes] = useState(false)
 
   const variableCount = variables.length as 2 | 3 | 4 | 5
   const is5Var = variables.length === 5
 
+  const activePlaneVar = is5Var
+    ? (variables.includes(planeVar) ? planeVar : (variables[variables.length - 1] ?? 'E'))
+    : 'E'
+  const activeSwap = is5Var ? swapAxes : false
+
+  // Keep the 5-variable model's axis layout in sync with the UI selectors
+  // (plane variable + row/column swap). applyAssignment preserves cell values by minterm.
+  useEffect(() => {
+    if (!is5Var) return
+    const vars = kmap.layout.variables
+    const selected = vars.includes(activePlaneVar)
+      ? activePlaneVar
+      : (vars[vars.length - 1] ?? 'E')
+    const remaining = vars.filter((v) => v !== selected)
+    const rowVars = activeSwap ? remaining.slice(2) : remaining.slice(0, 2)
+    const colVars = activeSwap ? remaining.slice(0, 2) : remaining.slice(2)
+
+    const desiredAxes = buildAssignment([selected], rowVars, colVars).axes
+    const currentAxes = kmap.layout.axes
+
+    const sameAxes =
+      currentAxes.length === desiredAxes.length &&
+      currentAxes.every((axis, i) => {
+        const want = desiredAxes[i]!
+        return (
+          axis.kind === want.kind &&
+          axis.variables.length === want.variables.length &&
+          axis.variables.every((v, j) => v === want.variables[j]!)
+        )
+      })
+
+    if (sameAxes) return
+    setModel(applyAssignment(kmap, buildAssignment([selected], rowVars, colVars)))
+  }, [kmap, is5Var, activePlaneVar, activeSwap, setModel])
+
   const handleVariableCountChange = (count: 2 | 3 | 4 | 5) => {
-    const vars = count === 5
-      ? ['A', 'B', 'C', 'D', 'E']
-      : ['A', 'B', 'C', 'D'].slice(0, count)
-    setVariables(vars)
+    // Preserve existing names where possible; add sensible defaults for newly
+    // required variables (identical to the legacy A/B/C/D/E preset for default names).
+    const next = adjustVariablesToCount(variables, count)
+    setVariables(next)
+    setSwapAxes(false)
+    if (count === 5) setPlaneVar(next[0] ?? 'E')
+  }
+
+  const handleVariablesChange = (names: string[]) => {
+    const result = validateVariableNames(names)
+    if (!result.valid) return
+    setVariables(result.names)
+    if (is5Var && !result.names.includes(activePlaneVar)) {
+      setPlaneVar(result.names[0] ?? result.names[result.names.length - 1])
+    }
   }
 
   const handleCellClick = (minterm: number) => {
@@ -94,6 +145,10 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
     setModel(next)
     setSelectedCells(new Set())
     setWalkthroughHighlight(null)
+    setSwapAxes(false)
+    if (example.variables.length === 5) {
+      setPlaneVar(example.variables[0] ?? 'A')
+    }
   }
 
   const ones = new Set(minterms(kmap))
@@ -180,6 +235,13 @@ export default function KMapSimulator({ onBackToHome, onOpenPractice }: KMapSimu
           onCurrentValueChange={setCurrentValue}
           onToggleMintermNumbers={() => setShowMintermNumbers(!showMintermNumbers)}
           onClear={clearKMap}
+          // showAxisLayout={is5Var} // LAYOUT FEATURE DISABLED
+          variables={variables}
+          onVariablesChange={handleVariablesChange}
+          // planeVar={activePlaneVar} // LAYOUT FEATURE DISABLED
+          // onPlaneVarChange={setPlaneVar} // LAYOUT FEATURE DISABLED
+          // swapAxes={activeSwap} // LAYOUT FEATURE DISABLED
+          // onSwapAxesChange={setSwapAxes} // LAYOUT FEATURE DISABLED
         />
 
         <div className="relative">
