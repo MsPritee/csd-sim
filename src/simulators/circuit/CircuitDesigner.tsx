@@ -13,7 +13,7 @@ import {
   downloadLogisimCirc,
   EXAMPLE_CIRCUITS,
 } from '../../application/circuit'
-import { GateGlyph, PinSymbol } from './GateGlyph'
+import { GateGlyph, PinSymbol, gateBodyBounds } from './GateGlyph'
 import { LibraryGlyph } from './ComponentGlyph'
 import { useTheme } from '../../contexts/ThemeContext'
 import {
@@ -26,7 +26,12 @@ import {
   wireColor,
   orthogonalRoute,
   junctionPoints,
+  centerRow,
+  labelPosition,
+  labelStyleProps,
+  INPUT_PIN_SQUARE,
 } from './layout'
+import type { LabelLocation, PinFacing, PinLabelLocation } from './layout'
 
 interface CircuitDesignerProps {
   onBackToHome?: () => void
@@ -345,6 +350,8 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
     tool,
     selected,
     selectedWire,
+    selection,
+    selectedWires,
     pendingFrom,
     inputs,
     sim,
@@ -352,14 +359,16 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
     panY,
     zoom,
     addComponent,
-    moveComponent,
-    removeComponent,
-    removeWire,
+    moveComponents,
+    removeComponents,
+    removeWires,
+    setSelection,
     beginWire,
     endWire,
     toggleInput,
     renameComponent,
     rotateComponent,
+    rotateComponents,
     addText,
     select,
     setTool,
@@ -412,12 +421,20 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
 
   const svgRef = useRef<SVGSVGElement>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
-  const [dragging, setDragging] = useState<{ id: string; dx: number; dy: number } | null>(null)
+  const spaceRef = useRef(false)
+  const suppressCanvasClickRef = useRef(false)
+  const [dragging, setDragging] = useState<{
+    origin: { x: number; y: number }
+    ids: string[]
+    starts: Map<string, { x: number; y: number }>
+  } | null>(null)
+  const [boxSelect, setBoxSelect] = useState<{ start: { x: number; y: number }; current: { x: number; y: number } } | null>(null)
   const [panning, setPanning] = useState<{ sx: number; sy: number; px: number; py: number } | null>(null)
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null)
   const [subName, setSubName] = useState('')
   const [editing, setEditing] = useState<{ id: string; label: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [styleModal, setStyleModal] = useState<'label' | 'border' | null>(null)
 
   // Hydrate the autosaved project once, then keep autosaving while open.
   useEffect(() => {
@@ -490,6 +507,13 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
         addComponent('subcircuit', { libraryId: tool.libraryId }, snap(x) - COMP_W / 2, snap(y) - COMP_H / 2)
         return
       }
+      if (tool === 'select') {
+        if (suppressCanvasClickRef.current) {
+          suppressCanvasClickRef.current = false
+          return
+        }
+        setSelection([], [])
+      }
       return
     }
     const { x, y } = toCanvas(e.clientX, e.clientY)
@@ -520,15 +544,17 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
   const handleComponentMouseDown = (e: React.MouseEvent, comp: Component) => {
     if (tool === 'select') {
       if (e.button === 0) {
-        select(comp.id)
-        const rect = svgRef.current?.getBoundingClientRect()
-        if (rect) {
-          setDragging({
-            id: comp.id,
-            dx: comp.x - (e.clientX - rect.left - panX) / zoom,
-            dy: comp.y - (e.clientY - rect.top - panY) / zoom,
-          })
+        const p = toCanvas(e.clientX, e.clientY)
+        if (selection.length > 1 && !selection.includes(comp.id)) {
+          setSelection([comp.id])
         }
+        const ids = selection.length > 1 && selection.includes(comp.id) ? selection : [comp.id]
+        const starts = new Map<string, { x: number; y: number }>()
+        for (const id of ids) {
+          const c = circuit.components.find((cc) => cc.id === id)
+          starts.set(id, { x: c ? c.x : 0, y: c ? c.y : 0 })
+        }
+        setDragging({ origin: p, ids, starts })
         e.stopPropagation()
       }
       return
@@ -557,9 +583,18 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
   }
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 1 || e.button === 2) {
+      setPanning({ sx: e.clientX, sy: e.clientY, px: panX, py: panY })
+      return
+    }
     if (e.button !== 0) return
     if (tool === 'select') {
-      setPanning({ sx: e.clientX, sy: e.clientY, px: panX, py: panY })
+      if (spaceRef.current) {
+        setPanning({ sx: e.clientX, sy: e.clientY, px: panX, py: panY })
+        return
+      }
+      const p = toCanvas(e.clientX, e.clientY)
+      setBoxSelect({ start: p, current: p })
     } else if (tool === 'wire') {
       setMouse(toCanvas(e.clientX, e.clientY))
     } else {
@@ -571,9 +606,21 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
     if (dragging) {
       const rect = svgRef.current?.getBoundingClientRect()
       if (!rect) return
-      const nx = (e.clientX - rect.left - panX) / zoom + dragging.dx
-      const ny = (e.clientY - rect.top - panY) / zoom + dragging.dy
-      moveComponent(dragging.id, snap(nx), snap(ny))
+      const cx = (e.clientX - rect.left - panX) / zoom
+      const cy = (e.clientY - rect.top - panY) / zoom
+      const dx = snap(cx - dragging.origin.x)
+      const dy = snap(cy - dragging.origin.y)
+      moveComponents(
+        dragging.ids.map((id) => ({
+          id,
+          x: (dragging.starts.get(id)?.x ?? 0) + dx,
+          y: (dragging.starts.get(id)?.y ?? 0) + dy,
+        })),
+      )
+      return
+    }
+    if (boxSelect) {
+      setBoxSelect((bs) => (bs ? { ...bs, current: toCanvas(e.clientX, e.clientY) } : bs))
       return
     }
     if (panning) {
@@ -586,6 +633,42 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
   }
 
   const handleMouseUp = () => {
+    if (boxSelect) {
+      suppressCanvasClickRef.current = true
+      setTimeout(() => {
+        suppressCanvasClickRef.current = false
+      }, 0)
+      const bs = boxSelect
+      const minX = Math.min(bs.start.x, bs.current.x)
+      const minY = Math.min(bs.start.y, bs.current.y)
+      const w = Math.abs(bs.current.x - bs.start.x)
+      const h = Math.abs(bs.current.y - bs.start.y)
+      if (w < 4 && h < 4) {
+        setSelection([], [])
+      } else {
+        const compIds = circuit.components
+          .filter((c) =>
+            c.type === 'text'
+              ? aabbIntersects(c.x - 4, c.y - 4, 80, 16, minX, minY, w, h)
+              : aabbIntersects(c.x, c.y, COMP_W, COMP_H, minX, minY, w, h),
+          )
+          .map((c) => c.id)
+        const wireIds = circuit.wires
+          .filter((wl) => {
+            const s = wireStart(wl)
+            const e2 = wireEnd(wl)
+            if (!s || !e2) return false
+            const pts = orthogonalRoute(s, e2)
+            for (let i = 1; i < pts.length; i++) {
+              if (segmentIntersectsRect(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y, minX, minY, w, h)) return true
+            }
+            return false
+          })
+          .map((wl) => wl.id)
+        setSelection(compIds, wireIds)
+      }
+      setBoxSelect(null)
+    }
     setDragging(null)
     setPanning(null)
     setMouse(null)
@@ -607,18 +690,23 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.key === 'Delete' || e.key === 'Backspace') && (selected || selectedWire)) {
-        if (selectedWire) removeWire(selectedWire)
-        else if (selected) removeComponent(selected)
+      const target = e.target as HTMLElement
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
+      if ((e.key === 'Delete' || e.key === 'Backspace') && (selection.length > 0 || selectedWires.length > 0 || !!selectedWire)) {
+        if (selection.length > 0) removeComponents(selection)
+        if (selectedWires.length > 0) removeWires(selectedWires)
         e.preventDefault()
       }
       if (e.key === 'Escape') {
         setTool('select')
-        select(null)
+        setSelection([], [])
         setEditing(null)
       }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R')) {
-        if (selected) {
+        if (selection.length > 1) {
+          rotateComponents(selection)
+          e.preventDefault()
+        } else if (selected) {
           rotateComponent(selected)
           e.preventDefault()
         }
@@ -635,7 +723,26 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selected, selectedWire, removeComponent, removeWire, setTool, select, rotateComponent, undo, redo])
+  }, [selected, selectedWire, selection, selectedWires, removeComponents, removeWires, setTool, select, setSelection, rotateComponent, rotateComponents, undo, redo])
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        const target = e.target as HTMLElement
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
+        spaceRef.current = true
+      }
+    }
+    const up = (e: KeyboardEvent) => {
+      if (e.code === 'Space') spaceRef.current = false
+    }
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+    }
+  }, [])
 
   const libraryInputs = (comp: Component): number | undefined => {
     if (comp.type !== 'subcircuit') return undefined
@@ -772,21 +879,24 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
             items={[
               { label: 'Undo', testid: 'menu-undo', onClick: () => undo(), disabled: past.length === 0 },
               { label: 'Redo', testid: 'menu-redo', onClick: () => redo(), disabled: future.length === 0 },
-              { label: 'Rename…', testid: 'menu-rename', onClick: () => openRenameEditor(), disabled: !selected },
+              { label: 'Rename…', testid: 'menu-rename', onClick: () => openRenameEditor(), disabled: selection.length !== 1 },
               {
                 label: 'Rotate',
                 testid: 'menu-rotate',
-                onClick: () => selected && rotateComponent(selected),
-                disabled: !selected,
+                onClick: () => {
+                  if (selection.length > 1) rotateComponents(selection)
+                  else if (selected) rotateComponent(selected)
+                },
+                disabled: selection.length === 0 && !selected,
               },
               {
                 label: 'Delete',
                 testid: 'menu-delete',
                 onClick: () => {
-                  if (selected) removeComponent(selected)
-                  else if (selectedWire) removeWire(selectedWire)
+                  if (selection.length > 0) removeComponents(selection)
+                  if (selectedWires.length > 0) removeWires(selectedWires)
                 },
-                disabled: !selected && !selectedWire,
+                disabled: selection.length === 0 && selectedWires.length === 0 && !selectedWire,
               },
             ]}
           />
@@ -1214,6 +1324,7 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
               }
             }}
             onTouchEnd={handleMouseUp}
+            onContextMenu={(e) => e.preventDefault()}
             data-testid="canvas"
           >
             <defs>
@@ -1230,7 +1341,7 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
                 const s = wireStart(w)
                 const e2 = wireEnd(w)
                 if (!s || !e2) return null
-                const active = selectedWire === w.id
+                const active = selectedWire === w.id || selectedWires.includes(w.id)
                 const signal = sim?.values.get(w.from)
                 const pts = orthogonalRoute(s, e2)
                 const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
@@ -1240,8 +1351,7 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
                     ev.stopPropagation()
                     if (tool === 'select') {
                       setTool('select')
-                      useCircuitStore.setState({ selectedWire: w.id })
-                      useCircuitStore.setState({ selected: null })
+                      setSelection([], [w.id])
                     }
                   }}>
                     {/* propagation-flow overlay on active-high wires */}
@@ -1264,10 +1374,17 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
 
               {/* components */}
               {circuit.components.map((comp) => {
-                const isSel = selected === comp.id
+                const isSel = selected === comp.id || selection.includes(comp.id)
                 const { inputs: inVals, output } = componentValue(comp)
                 const counts = portCounts(comp, libraryInputs(comp), libraryOutputs(comp))
                 const isText = comp.type === 'text'
+                const labelLoc = (comp.attrs.labelLocation as LabelLocation) ?? 'bottom'
+                const labelPos = isText ? null : labelPosition(labelLoc, COMP_W, COMP_H)
+                const labelStyle = isText ? null : labelStyleProps(comp.attrs)
+                const borderColor = attrString(comp.attrs, 'borderColor') || undefined
+                const textColor = attrString(comp.attrs, 'labelColor')
+                const textStyle = isText ? labelStyleProps(comp.attrs) : null
+                const pinFacing = (comp.attrs.facing as PinFacing) ?? 'east'
                 return (
                   <g
                     key={comp.id}
@@ -1281,58 +1398,100 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
                         if (comp.type === 'input') toggleInput(comp.id)
                       } else if (tool === 'select') {
                         e.stopPropagation()
-                        select(comp.id)
+                        if (!selection.includes(comp.id)) select(comp.id)
                       }
                     }}
                     data-testid={`component-${comp.type.toLowerCase()}`}
                     style={{ cursor: tool === 'select' ? 'move' : 'pointer' }}
                   >
                     {isText ? (
-                      <text
-                        x={0}
-                        y={0}
-                        fontSize="14"
-                        fill={isSel ? 'var(--accent-primary)' : 'var(--text-primary)'}
-                        style={{ userSelect: 'none', cursor: 'text' }}
-                      >
-                        {attrString(comp.attrs, 'text') || ' '}
-                      </text>
+                      <>
+                        {isSel && <SelectionCorners x={-4} y={-4} width={80} height={16} />}
+                        <text
+                          x={0}
+                          y={0}
+                          fontSize={textStyle?.fontSize ?? 14}
+                          fontWeight={textStyle?.fontWeight ?? 400}
+                          fontStyle={textStyle?.fontStyle ?? 'normal'}
+                          textDecoration={textStyle?.textDecoration ?? 'none'}
+                          fontFamily={textStyle?.fontFamily}
+                          fill={isSel ? 'var(--accent-primary)' : (textColor || 'var(--text-primary)')}
+                          style={{ userSelect: 'none', cursor: 'text' }}
+                        >
+                          {attrString(comp.attrs, 'text') || ' '}
+                        </text>
+                      </>
                     ) : (
                       <>
-                        {isSel && (
-                          <rect x={isGateComponentType(comp.type) ? -6 : -8} y={isGateComponentType(comp.type) ? -6 : -8} width={COMP_W + 12} height={COMP_H + 12} rx={8} fill="none" stroke="var(--accent-primary)" strokeWidth={2} strokeDasharray="5 4" />
-                        )}
                         {isGateComponentType(comp.type) ? (
-                          <GateGlyph
-                            gate={comp.type as GateType}
-                            inputs={inVals}
-                            output={output}
-                            label={componentLabel(comp)}
-                            labelLocation={(comp.attrs.labelLocation as 'top' | 'bottom') ?? 'bottom'}
-                          />
+                          <>
+                            {isSel && <SelectionCorners {...gateBodyBounds(comp.type as GateType, counts.inputs)} />}
+                            <GateGlyph
+                              gate={comp.type as GateType}
+                              inputs={inVals}
+                              output={output}
+                              label={componentLabel(comp)}
+                              labelLocation={labelLoc}
+                              labelStyle={labelStyle ?? undefined}
+                              borderColor={borderColor}
+                            />
+                          </>
+                        ) : comp.type === 'input' ? (
+                          <>
+                            {/* input pin: no outer box — only the inner value square; selection corners hug it */}
+                            {isSel && (
+                              <SelectionCorners
+                                x={INPUT_PIN_SQUARE.x}
+                                y={INPUT_PIN_SQUARE.y}
+                                width={INPUT_PIN_SQUARE.width}
+                                height={INPUT_PIN_SQUARE.height}
+                              />
+                            )}
+                            <PinSymbol
+                              type={comp.type}
+                              label={attrString(comp.attrs, 'label')}
+                              value={output ?? inVals[0]}
+                              width={typeof comp.attrs.width === 'number' ? comp.attrs.width : 1}
+                              labelLocation={labelLoc as PinLabelLocation}
+                              labelStyle={labelStyle ?? undefined}
+                              facing={pinFacing}
+                            />
+                          </>
                         ) : (
                           <>
-                            <rect x={0} y={0} width={COMP_W} height={COMP_H} rx={10} fill="var(--bg-card)" stroke={isSel ? 'var(--accent-primary)' : 'var(--border-color)'} strokeWidth={1.5} />
-                            <text x={COMP_W / 2} y={comp.attrs.labelLocation === 'top' ? 14 : COMP_H - 10} textAnchor="middle" fontSize="11" fill="var(--text-secondary)" style={{ userSelect: 'none' }}>
+                            {isSel && <SelectionCorners x={0} y={0} width={COMP_W} height={COMP_H} />}
+                            <rect x={0} y={0} width={COMP_W} height={COMP_H} rx={10} fill="var(--bg-card)" stroke={borderColor ?? (isSel ? 'var(--accent-primary)' : 'var(--border-color)')} strokeWidth={1.5} />
+                            <text
+                              x={labelPos?.x ?? COMP_W / 2}
+                              y={labelPos?.y ?? COMP_H - 4}
+                              textAnchor={labelPos?.anchor ?? 'middle'}
+                              fontSize={labelStyle?.fontSize ?? 11}
+                              fill={labelStyle?.fill ?? 'var(--text-secondary)'}
+                              fontWeight={labelStyle?.fontWeight ?? 400}
+                              fontStyle={labelStyle?.fontStyle ?? 'normal'}
+                              textDecoration={labelStyle?.textDecoration ?? 'none'}
+                              fontFamily={labelStyle?.fontFamily}
+                              style={{ userSelect: 'none' }}
+                            >
                               {componentLabel(comp)}
                             </text>
-                        {comp.type === 'input' || comp.type === 'output' ? (
-                            <PinSymbol type={comp.type} label={attrString(comp.attrs, 'label')} value={output ?? inVals[0]} width={typeof comp.attrs.width === 'number' ? comp.attrs.width : 1} />
-                          ) : comp.type === 'subcircuit' ? (
-                            <SubcircuitGlyph label={attrString(comp.attrs, 'libraryId')} counts={counts} inVals={inVals} output={output} />
-                          ) : (
-                            <LibraryGlyph
-                              type={comp.type}
-                              attrs={comp.attrs}
-                              counts={counts}
-                              inVals={inVals}
-                              outVals={Array.from({ length: counts.outputs }, (_, i) => sim?.values.get(`${comp.id}:out:${i}`))}
-                            />
-                          )}
-                        </>
-                      )}
-                    </>
-                  )}
+                            {comp.type === 'output' ? (
+                              <PinSymbol type={comp.type} label={attrString(comp.attrs, 'label')} value={output ?? inVals[0]} width={typeof comp.attrs.width === 'number' ? comp.attrs.width : 1} />
+                            ) : comp.type === 'subcircuit' ? (
+                              <SubcircuitGlyph label={attrString(comp.attrs, 'libraryId')} counts={counts} inVals={inVals} output={output} />
+                            ) : (
+                              <LibraryGlyph
+                                type={comp.type}
+                                attrs={comp.attrs}
+                                counts={counts}
+                                inVals={inVals}
+                                outVals={Array.from({ length: counts.outputs }, (_, i) => sim?.values.get(`${comp.id}:out:${i}`))}
+                              />
+                            )}
+                          </>
+                        )}
+                      </>
+                    )}
                   </g>
                 )
               })}
@@ -1340,6 +1499,22 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
               {/* wire-in-progress preview */}
               {pendingFrom && pendingPos && mouse && (
                 <line x1={pendingPos.x} y1={pendingPos.y} x2={mouse.x} y2={mouse.y} stroke="var(--accent-primary)" strokeWidth={2} strokeDasharray="6 4" data-testid="wire-preview" />
+              )}
+
+              {/* rubber-band box selection */}
+              {boxSelect && (
+                <rect
+                  x={Math.min(boxSelect.start.x, boxSelect.current.x)}
+                  y={Math.min(boxSelect.start.y, boxSelect.current.y)}
+                  width={Math.abs(boxSelect.current.x - boxSelect.start.x)}
+                  height={Math.abs(boxSelect.current.y - boxSelect.start.y)}
+                  fill="var(--accent-primary)"
+                  fillOpacity={0.12}
+                  stroke="var(--accent-primary)"
+                  strokeWidth={1}
+                  strokeDasharray="4 3"
+                  data-testid="box-select"
+                />
               )}
             </g>
           </svg>
@@ -1505,8 +1680,16 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
               </button>
             )}
           </div>
-          {selectedComponent ? (
-            <AttributeTable component={selectedComponent} />
+          {selection.length > 1 ? (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }} data-testid="multi-selection-hint">
+              {selection.length} components selected.
+            </p>
+          ) : selectedComponent ? (
+            <AttributeTable
+              component={selectedComponent}
+              onOpenStyle={() => setStyleModal('label')}
+              onOpenBorder={() => setStyleModal('border')}
+            />
           ) : (
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               Select a component to edit its attributes.
@@ -1540,6 +1723,11 @@ export default function CircuitDesigner({ onBackToHome }: CircuitDesignerProps =
             aria-hidden="true"
           />
         )}
+
+        {/* Label / border colour style popup */}
+        {styleModal && selectedComponent && (
+          <StyleModal kind={styleModal} component={selectedComponent} onClose={() => setStyleModal(null)} />
+        )}
       </div>
     </main>
   )
@@ -1561,18 +1749,90 @@ function libraryTypeFromTool(tool: Tool): string {
   return hit ? hit.type : ''
 }
 
+/** Inclusive axis-aligned box intersection (used by rubber-band selection). */
+function aabbIntersects(
+  ax: number,
+  ay: number,
+  aw: number,
+  ah: number,
+  bx: number,
+  by: number,
+  bw: number,
+  bh: number,
+): boolean {
+  return ax <= bx + bw && ax + aw >= bx && ay <= by + bh && ay + ah >= by
+}
+
+/** Segment–box intersection for axis-aligned segments (orthogonal wires). */
+function segmentIntersectsRect(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  rx: number,
+  ry: number,
+  rw: number,
+  rh: number,
+): boolean {
+  return aabbIntersects(
+    Math.min(x1, x2),
+    Math.min(y1, y2),
+    Math.abs(x2 - x1),
+    Math.abs(y2 - y1),
+    rx,
+    ry,
+    rw,
+    rh,
+  )
+}
+
 /** Editable attribute panel driven by the selected component's descriptor schema. */
-function AttributeTable({ component }: { component: Component }) {
+function AttributeTable({
+  component,
+  onOpenStyle,
+  onOpenBorder,
+}: {
+  component: Component
+  onOpenStyle: () => void
+  onOpenBorder: () => void
+}) {
   const setAttr = useCircuitStore((s) => s.setAttr)
   const desc = getDescriptor(component.type)
 
-  if (desc.attributes.length === 0) {
+  // Style/border attributes are edited through the popup dialogs, not the rows.
+  const MODAL_ATTRS = new Set([
+    'labelColor',
+    'labelBold',
+    'labelItalic',
+    'labelUnderline',
+    'labelSize',
+    'labelFont',
+    'borderColor',
+  ])
+  const rows = desc.attributes.filter((a) => !MODAL_ATTRS.has(a.key))
+
+  if (rows.length === 0) {
     return <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No editable attributes.</p>
   }
 
+  const supportsLabelStyle = desc.attributes.some((a) => a.key === 'labelColor')
+  const supportsBorder = desc.attributes.some((a) => a.key === 'borderColor')
+
+  const toggleBtn = (testid: string, label: string, onClick: () => void) => (
+    <button
+      type="button"
+      data-testid={testid}
+      onClick={onClick}
+      className="rounded border px-2 py-1 text-xs font-medium transition-colors hover:bg-black/5"
+      style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}
+    >
+      {label}
+    </button>
+  )
+
   return (
     <div className="flex flex-col gap-2.5">
-      {desc.attributes.map((a) => {
+      {rows.map((a) => {
         const value = component.attrs[a.key] ?? a.default
         const commit = (v: unknown) => setAttr(component.id, a.key, v as string | number | boolean)
         return (
@@ -1630,6 +1890,230 @@ function AttributeTable({ component }: { component: Component }) {
           </label>
         )
       })}
+      {(supportsLabelStyle || supportsBorder) && (
+        <div className="flex items-center gap-2 border-t pt-2 mt-1" style={{ borderColor: 'var(--border-color)' }}>
+          {supportsLabelStyle && toggleBtn('btn-label-style', 'Label style…', onOpenStyle)}
+          {supportsBorder && toggleBtn('btn-border-color', 'Border color…', onOpenBorder)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Four small corner brackets that mark a selected element (no full-box outline). */
+function SelectionCorners({ x, y, width, height }: { x: number; y: number; width: number; height: number }) {
+  const pad = 2
+  const len = 10
+  const left = x - pad
+  const top = y - pad
+  const right = x + width + pad
+  const bottom = y + height + pad
+  const d =
+    `M ${left} ${top} L ${left + len} ${top} L ${left + len} ${top + len}` +
+    `M ${right} ${top} L ${right - len} ${top} L ${right - len} ${top + len}` +
+    `M ${left} ${bottom} L ${left + len} ${bottom} L ${left + len} ${bottom - len}` +
+    `M ${right} ${bottom} L ${right - len} ${bottom} L ${right - len} ${bottom - len}`
+  return (
+    <path
+      d={d}
+      fill="none"
+      stroke="var(--accent-primary)"
+      strokeWidth={2}
+      data-testid="selection-corners"
+    />
+  )
+}
+
+const LABEL_FONT_OPTIONS: readonly { value: string; label: string }[] = [
+  { value: '', label: 'Default' },
+  { value: 'monospace', label: 'Monospace' },
+  { value: 'serif', label: 'Serif' },
+  { value: 'sans-serif', label: 'Sans-serif' },
+  { value: 'cursive', label: 'Cursive' },
+]
+
+function validHexColor(v: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test(v)
+}
+
+/** Small popup for the label text style (label popups) or the shape border colour. */
+function StyleModal({
+  kind,
+  component,
+  onClose,
+}: {
+  kind: 'label' | 'border'
+  component: Component
+  onClose: () => void
+}) {
+  const setAttr = useCircuitStore((s) => s.setAttr)
+  const commit = (key: string, value: string | number | boolean) => setAttr(component.id, key, value)
+  const color = attrString(component.attrs, kind === 'label' ? 'labelColor' : 'borderColor')
+  const size = typeof component.attrs.labelSize === 'number' ? component.attrs.labelSize : 11
+  const bold = component.attrs.labelBold === true
+  const italic = component.attrs.labelItalic === true
+  const underline = component.attrs.labelUnderline === true
+  const font = attrString(component.attrs, 'labelFont')
+  const field = (key: string, label: string) => (
+    <label className="flex flex-col gap-1">
+      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+      {key === 'labelSize' ? (
+        <input
+          type="number"
+          value={size}
+          min={8}
+          max={40}
+          step={1}
+          onChange={(e) => commit('labelSize', e.target.value === '' ? 11 : Number(e.target.value))}
+          data-testid="label-size-input"
+          className="rounded border px-1.5 py-0.5 text-xs"
+          style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+        />
+      ) : (
+        <select
+          value={font}
+          onChange={(e) => commit('labelFont', e.target.value)}
+          data-testid="label-font-select"
+          className="rounded border px-1.5 py-0.5 text-xs"
+          style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+        >
+          {LABEL_FONT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      )}
+    </label>
+  )
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      data-testid={`style-modal-${kind}`}
+    >
+      <div
+        className="w-72 rounded-xl border shadow-xl"
+        style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-color)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b px-4 py-2" style={{ borderColor: 'var(--border-color)' }}>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {kind === 'label' ? 'Label Style' : 'Border Color'}
+          </h3>
+          <button
+            className="rounded p-1 transition-colors hover:bg-black/5"
+            onClick={onClose}
+            style={{ color: 'var(--text-secondary)' }}
+            aria-label="Close style dialog"
+            data-testid="style-modal-close"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex flex-col gap-3 p-4">
+          {kind === 'label' ? (
+            <>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Text Color</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={validHexColor(color) ? color : '#888888'}
+                    onChange={(e) => commit('labelColor', e.target.value)}
+                    className="h-7 w-10 cursor-pointer"
+                    data-testid="label-color-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => commit('labelColor', '')}
+                    className="rounded border px-2 py-0.5 text-xs"
+                    style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}
+                    data-testid="label-color-clear"
+                  >
+                    Default
+                  </button>
+                </div>
+              </label>
+              <div className="flex gap-3">
+                {(
+                  [
+                    ['labelBold', 'Bold'],
+                    ['labelItalic', 'Italic'],
+                    ['labelUnderline', 'Underline'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <input
+                      type="checkbox"
+                      checked={key === 'labelBold' ? bold : key === 'labelItalic' ? italic : underline}
+                      onChange={(e) => commit(key, e.target.checked)}
+                      className="h-4 w-4"
+                      data-testid={`label-${key.toLowerCase()}-input`}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2">{field('labelSize', 'Font Size')}{field('labelFont', 'Font')}</div>
+              <div
+                className="rounded border px-2 py-1.5 text-lg text-center"
+                style={{
+                  color: validHexColor(color) ? color : 'var(--text-primary)',
+                  fontWeight: bold ? 700 : 400,
+                  fontStyle: italic ? 'italic' : 'normal',
+                  textDecoration: underline ? 'underline' : 'none',
+                  fontFamily: font || undefined,
+                  borderColor: 'var(--border-color)',
+                  backgroundColor: 'var(--bg-tertiary)',
+                }}
+                data-testid="label-preview"
+              >
+                Aa
+              </div>
+            </>
+          ) : (
+            <>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Border Color</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={validHexColor(color) ? color : '#888888'}
+                    onChange={(e) => commit('borderColor', e.target.value)}
+                    className="h-7 w-10 cursor-pointer"
+                    data-testid="border-color-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => commit('borderColor', '')}
+                    className="rounded border px-2 py-0.5 text-xs"
+                    style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}
+                    data-testid="border-color-clear"
+                  >
+                    Default
+                  </button>
+                </div>
+              </label>
+              <div
+                className="rounded border-2 p-3 text-center text-xs"
+                style={{
+                  borderColor: validHexColor(color) ? color : 'var(--border-color)',
+                  color: 'var(--text-muted)',
+                }}
+                data-testid="border-preview"
+              >
+                Shape border preview
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -1646,8 +2130,8 @@ function SubcircuitGlyph({
   inVals: (NetValue | undefined)[]
   output: NetValue | undefined
 }) {
-  const inYs = counts.inputs === 1 ? [50] : counts.inputs === 2 ? [32, 68] : Array.from({ length: counts.inputs }, (_, i) => 20 + (60 * i) / Math.max(1, counts.inputs - 1))
-  const outYs = counts.outputs === 1 ? [50] : Array.from({ length: counts.outputs }, (_, i) => 20 + (60 * i) / Math.max(1, counts.outputs - 1))
+  const inYs = Array.from({ length: counts.inputs }, (_, i) => centerRow(i, counts.inputs))
+  const outYs = Array.from({ length: counts.outputs }, (_, i) => centerRow(i, counts.outputs))
   return (
     <g>
       {inYs.map((y, i) => (

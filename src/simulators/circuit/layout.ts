@@ -1,11 +1,11 @@
 import { getGate } from '../../core/gates/catalog'
 import type { GateType } from '../../core/gates/types'
 import type { Component, PortId } from '../../core/circuit'
-import { bitValue, packedValue } from '../../core/circuit'
+import { bitValue, packedValue, attrNumber, attrString } from '../../core/circuit'
 import type { NetValue } from '../../core/circuit'
+import type { AttrValue } from '../../core/circuit/descriptors'
 import {
   COMPONENT_DESCRIPTORS,
-  attrString,
   isGateComponentType,
   portCountOf,
 } from '../../core/circuit/descriptors'
@@ -19,10 +19,54 @@ export const COMP_H = 100
 const IN_X = 8
 /** Local x for the output-side pin column. */
 const OUT_X = 132
-/** Connection-dot x for an input-pin component (facing right, value box). */
-const INPUT_DOT_X = 68
 /** Connection x for an output-pin component (left edge of the lamp circle). */
 const OUTPUT_DOT_X = 100
+
+/** Input-pin glyph: a 34×34 value square centred in the 140×100 box. */
+export const INPUT_PIN_SQUARE = { x: 34, y: 28, width: 34, height: 34 }
+
+/** Which side of an input pin its connection (and wire port) faces. */
+export type PinFacing = 'east' | 'west' | 'north' | 'south'
+
+/** Local (component-relative) connection-dot / wire-port position for an input pin. */
+export function inputPinPortLocal(facing: PinFacing): { x: number; y: number } {
+  const s = INPUT_PIN_SQUARE
+  const cx = s.x + s.width / 2
+  const cy = s.y + s.height / 2
+  switch (facing) {
+    case 'west':
+      return { x: s.x, y: cy }
+    case 'north':
+      return { x: cx, y: s.y }
+    case 'south':
+      return { x: cx, y: s.y + s.height }
+    case 'east':
+    default:
+      return { x: s.x + s.width, y: cy }
+  }
+}
+
+/** Input-pin label placement: always OUTSIDE the pin square (no center, no box). */
+export type PinLabelLocation = 'top' | 'bottom' | 'left' | 'right'
+
+export function pinLabelPosition(
+  location: PinLabelLocation,
+): { x: number; y: number; anchor: 'start' | 'middle' | 'end' } {
+  const s = INPUT_PIN_SQUARE
+  const cx = s.x + s.width / 2
+  const cy = s.y + s.height / 2
+  switch (location) {
+    case 'top':
+      return { x: cx, y: s.y - 12, anchor: 'middle' }
+    case 'left':
+      return { x: s.x - 12, y: cy, anchor: 'end' }
+    case 'right':
+      return { x: s.x + s.width + 12, y: cy, anchor: 'start' }
+    case 'bottom':
+    default:
+      return { x: cx, y: s.y + s.height + 12, anchor: 'middle' }
+  }
+}
 
 /** Resolve an instance's port counts via its descriptor (library arity d when supplied). */
 function counts(
@@ -53,8 +97,9 @@ export function portLocalPos(
   const index = Number(id.slice(id.lastIndexOf(':') + 1))
 
   if (component.type === 'input') {
-    // a source: its connection dot is on the facing (right) side
-    return { x: INPUT_DOT_X, y: 45 }
+    // a source: its connection dot sits on the facing side of the value square
+    const facing = attrString(component.attrs, 'facing', 'east') as PinFacing
+    return inputPinPortLocal(facing)
   }
   if (component.type === 'output') {
     // a sink: its connection is on the left edge of the lamp
@@ -69,14 +114,66 @@ export function portLocalPos(
   return { x: IN_X, y: centerRow(index, count) }
 }
 
-/** Pin row y-positions for a port column (Logisim 2-pin classic layout). */
+/**
+ * Pin row y-positions for a port column: the group is centered vertically in
+ * the 100px box (y=50) with equal spacing between every adjacent pin. The
+ * two-input case keeps the classic Logisim positions (32 / 68).
+ */
 export function centerRow(index: number, count: number): number {
-  if (count === 1) return 50
-  // Keep the classic two-input positions (32 / 68) and compress wider gates
-  // (Logisim defaults to 5 inputs) inside the 100px box.
-  if (count === 2) return index === 0 ? 32 : 68
-  const spacing = 48 / (count - 1)
-  return 18 + index * spacing
+  if (count <= 1) return 50
+  const gap = Math.min(36, 60 / (count - 1))
+  return 50 + (index - (count - 1) / 2) * gap
+}
+
+/** Label placement options for gates and labelled elements. */
+export type LabelLocation = 'top' | 'bottom' | 'left' | 'right' | 'center'
+
+/**
+ * Anchor for a component label. `top`, `bottom` and `center` sit inside the
+ * box; `left`/`right` sit just outside it so the text never covers the shape.
+ */
+export function labelPosition(
+  location: LabelLocation,
+  width: number,
+  height: number,
+): { x: number; y: number; anchor: 'start' | 'middle' | 'end' } {
+  switch (location) {
+    case 'top':
+      return { x: width / 2, y: 8, anchor: 'middle' }
+    case 'center':
+      return { x: width / 2, y: height / 2 + 4, anchor: 'middle' }
+    case 'left':
+      return { x: -6, y: height / 2, anchor: 'end' }
+    case 'right':
+      return { x: width + 6, y: height / 2, anchor: 'start' }
+    case 'bottom':
+    default:
+      return { x: width / 2, y: height - 4, anchor: 'middle' }
+  }
+}
+
+/** SVG text styling computed from a component's label style attributes. */
+export interface LabelTextStyle {
+  readonly fontSize: number
+  readonly fill: string
+  readonly fontWeight: number
+  readonly fontStyle: 'italic' | 'normal'
+  readonly textDecoration: 'underline' | 'none'
+  readonly fontFamily: string | undefined
+}
+
+/** SVG text props derived from the style attributes (labelColor/bold/italic/underline/size/font). */
+export function labelStyleProps(attrs: Readonly<Record<string, AttrValue>>): LabelTextStyle {
+  const color = attrString(attrs, 'labelColor')
+  const font = attrString(attrs, 'labelFont')
+  return {
+    fontSize: attrNumber(attrs, 'labelSize', 11),
+    fill: color !== '' ? color : 'var(--text-secondary)',
+    fontWeight: attrs['labelBold'] === true ? 700 : 400,
+    fontStyle: attrs['labelItalic'] === true ? 'italic' : 'normal',
+    textDecoration: attrs['labelUnderline'] === true ? 'underline' : 'none',
+    fontFamily: font !== '' ? font : undefined,
+  }
 }
 
 export function portCounts(

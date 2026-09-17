@@ -64,6 +64,10 @@ export interface CircuitState {
   tool: Tool
   selected: ComponentId | null
   selectedWire: string | null
+  /** All currently-selected components (box/click multi-select). */
+  selection: ComponentId[]
+  /** All currently-selected wires (box multi-select). */
+  selectedWires: string[]
   /** The output port chosen as the start of a wire-in-progress. */
   pendingFrom: PortId | null
   /** Forced input-pin levels, keyed by component id. */
@@ -88,8 +92,16 @@ export interface CircuitState {
     y?: number,
   ) => void
   moveComponent: (id: ComponentId, x: number, y: number) => void
+  /** Move several components at once (one undoable edit). */
+  moveComponents: (moves: readonly { id: ComponentId; x: number; y: number }[]) => void
   removeComponent: (id: ComponentId) => void
+  /** Remove several components and their attached wires (one undoable edit). */
+  removeComponents: (ids: readonly ComponentId[]) => void
   removeWire: (id: string) => void
+  /** Remove several wires (one undoable edit). */
+  removeWires: (ids: readonly string[]) => void
+  /** Replace the whole selection (box-select / multi-select result). */
+  setSelection: (componentIds: readonly ComponentId[], wireIds?: readonly string[]) => void
   /** Start a wire from the given (output) port. */
   beginWire: (port: PortId) => void
   /** Finish a wire at the given (input) port. */
@@ -101,6 +113,8 @@ export interface CircuitState {
   setAttr: (id: ComponentId, key: string, value: AttrValue) => void
   /** Rotate the selected component one quarter-turn clockwise. */
   rotateComponent: (id: ComponentId) => void
+  /** Rotate several components clockwise (one undoable edit). */
+  rotateComponents: (ids: readonly ComponentId[]) => void
   addText: (x: number, y: number, content: string) => void
   select: (id: ComponentId | null) => void
   setTool: (tool: Tool) => void
@@ -156,6 +170,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
   tool: 'select',
   selected: null,
   selectedWire: null,
+  selection: [],
+  selectedWires: [],
   pendingFrom: null,
   inputs: {},
   sim: null,
@@ -176,6 +192,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         })),
         inputs: type === 'input' ? { ...s.inputs, [id]: 0 } : s.inputs,
         selected: id,
+        selection: [id],
+        selectedWires: [],
         tool: 'select',
       })),
     )
@@ -187,6 +205,21 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         tabs: mapActiveCircuit(s, (c) => ({
           ...c,
           components: c.components.map((comp) => (comp.id === id ? { ...comp, x, y } : comp)),
+        })),
+      })),
+    )
+  },
+
+  moveComponents: (moves) => {
+    const byId = new Map(moves.map((m) => [m.id, m]))
+    set(
+      withHistory((s) => ({
+        tabs: mapActiveCircuit(s, (c) => ({
+          ...c,
+          components: c.components.map((comp) => {
+            const move = byId.get(comp.id)
+            return move ? { ...comp, x: move.x, y: move.y } : comp
+          }),
         })),
       })),
     )
@@ -208,7 +241,39 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           tabs,
           inputs,
           selected: s.selected === id ? null : s.selected,
+          selection: s.selection.filter((cid) => cid !== id),
           pendingFrom: s.pendingFrom?.startsWith(`${id}:`) ? null : s.pendingFrom,
+        }
+      }),
+    )
+  },
+
+  removeComponents: (ids) => {
+    set(
+      withHistory((s) => {
+        const idSet = new Set(ids)
+        const removedWireIds: string[] = []
+        const tabs = mapActiveCircuit(s, (c) => {
+          const wires = c.wires.filter((w) => {
+            const attached = idSet.has(w.from.split(':')[0] ?? '') || idSet.has(w.to.split(':')[0] ?? '')
+            if (attached) removedWireIds.push(w.id)
+            return !attached
+          })
+          const components = c.components.filter((comp) => !idSet.has(comp.id))
+          return { components, wires }
+        })
+        const removedWires = new Set(removedWireIds)
+        const inputs = { ...s.inputs }
+        for (const id of ids) delete inputs[id]
+        return {
+          tabs,
+          inputs,
+          selected: s.selected && idSet.has(s.selected) ? null : s.selected,
+          selection: s.selection.filter((cid) => !idSet.has(cid)),
+          selectedWire: s.selectedWire && removedWires.has(s.selectedWire) ? null : s.selectedWire,
+          selectedWires: s.selectedWires.filter((wid) => !removedWires.has(wid)),
+          pendingFrom:
+            s.pendingFrom && idSet.has(s.pendingFrom.split(':')[0]) ? null : s.pendingFrom,
         }
       }),
     )
@@ -219,10 +284,31 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       withHistory((s) => ({
         tabs: mapActiveCircuit(s, (c) => ({ ...c, wires: c.wires.filter((w) => w.id !== id) })),
         selectedWire: s.selectedWire === id ? null : s.selectedWire,
+        selectedWires: s.selectedWires.filter((wid) => wid !== id),
         pendingFrom: null,
       })),
     )
   },
+
+  removeWires: (ids) => {
+    const idSet = new Set(ids)
+    set(
+      withHistory((s) => ({
+        tabs: mapActiveCircuit(s, (c) => ({ ...c, wires: c.wires.filter((w) => !idSet.has(w.id)) })),
+        selectedWire: s.selectedWire && idSet.has(s.selectedWire) ? null : s.selectedWire,
+        selectedWires: s.selectedWires.filter((wid) => !idSet.has(wid)),
+        pendingFrom: null,
+      })),
+    )
+  },
+
+  setSelection: (componentIds, wireIds = []) =>
+    set({
+      selection: [...componentIds],
+      selected: componentIds[0] ?? null,
+      selectedWires: [...wireIds],
+      selectedWire: wireIds[0] ?? null,
+    }),
 
   beginWire: (port) => {
     set(() => ({ pendingFrom: port, tool: 'wire' }))
@@ -308,6 +394,22 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     )
   },
 
+  rotateComponents: (ids) => {
+    const idSet = new Set(ids)
+    set(
+      withHistory((s) => ({
+        tabs: mapActiveCircuit(s, (c) => ({
+          ...c,
+          components: c.components.map((comp) =>
+            idSet.has(comp.id)
+              ? { ...comp, rotation: (((comp.rotation as number) + 1) % 4) as 0 | 1 | 2 | 3 }
+              : comp,
+          ),
+        })),
+      })),
+    )
+  },
+
   addText: (x, y, content) => {
     const id = nextId()
     const attrs = normalizeAttrs('text', { text: content })
@@ -321,7 +423,13 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     )
   },
 
-  select: (id) => set({ selected: id, selectedWire: null }),
+  select: (id) =>
+    set({
+      selected: id,
+      selectedWire: null,
+      selection: id ? [id] : [],
+      selectedWires: [],
+    }),
   setTool: (tool) => set({ tool }),
 
   setSim: (sim) => set({ sim }),
@@ -351,6 +459,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         activeTabId: id,
         selected: null,
         selectedWire: null,
+        selection: [],
+        selectedWires: [],
         pendingFrom: null,
         tool: 'select',
       })),
@@ -375,6 +485,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
       activeTabId: id,
       selected: null,
       selectedWire: null,
+      selection: [],
+      selectedWires: [],
       pendingFrom: null,
       tool: 'select',
       inputs: {},
@@ -393,6 +505,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
           tabs: remaining,
           activeTabId,
           selected: null,
+          selection: [],
+          selectedWires: [],
           pendingFrom: null,
           inputs: {},
         }
@@ -404,7 +518,7 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
     set(
       withHistory((s) => {
         const tabs = mapActiveCircuit(s, () => ({ components: [], wires: [] }))
-        return { tabs, selected: null, pendingFrom: null, inputs: {} }
+        return { tabs, selected: null, selection: [], selectedWires: [], pendingFrom: null, inputs: {} }
       }),
     ),
 
@@ -425,6 +539,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         future: nextFuture,
         selected: null,
         selectedWire: null,
+        selection: [],
+        selectedWires: [],
         pendingFrom: null,
       }
     }),
@@ -446,6 +562,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         future: future.slice(1),
         selected: null,
         selectedWire: null,
+        selection: [],
+        selectedWires: [],
         pendingFrom: null,
       }
     }),
@@ -468,6 +586,8 @@ export const useCircuitStore = create<CircuitState>((set, get) => ({
         future: [],
         selected: null,
         selectedWire: null,
+        selection: [],
+        selectedWires: [],
         pendingFrom: null,
         tool: 'select',
       }

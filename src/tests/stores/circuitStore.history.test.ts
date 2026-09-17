@@ -102,7 +102,7 @@ describe('undo/redo', () => {
     useCircuitStore.getState().undo()
     const c = active(useCircuitStore.getState()).components[0]!
     id = c.id
-    expect(c.attrs.inputs).toBe(5)
+    expect(c.attrs.inputs).toBe(2)
     expect(c.rotation).toBe(0)
   })
 

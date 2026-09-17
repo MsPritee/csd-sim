@@ -5,6 +5,7 @@ import { ThemeProvider } from '../../../contexts/ThemeContext'
 import { useCircuitStore } from '../../../stores/circuitStore'
 import type { CircuitState } from '../../../stores/circuitStore'
 import { bitValue, packedValue, portCountOf } from '../../../core/circuit'
+import { gateBodyBounds } from '../../../simulators/circuit/GateGlyph'
 
 /** Render the designer inside the ThemeProvider (it now exposes a theme toggle). */
 function renderDesigner() {
@@ -29,6 +30,8 @@ beforeEach(() => {
     tool: 'select',
     selected: null,
     selectedWire: null,
+    selection: [],
+    selectedWires: [],
     pendingFrom: null,
     inputs: {},
     sim: null,
@@ -235,7 +238,15 @@ describe('CircuitDesigner', () => {
 
     state = useCircuitStore.getState()
     expect(active(state).components[0]!.type).toBe('text')
-    expect(active(state).components[0]!.attrs).toEqual({ text: 'ALU select' })
+    expect(active(state).components[0]!.attrs).toEqual({
+      text: 'ALU select',
+      labelColor: '',
+      labelBold: false,
+      labelItalic: false,
+      labelUnderline: false,
+      labelSize: 11,
+      labelFont: '',
+    })
   })
 
   it('renames an input pin with the Label tool', () => {
@@ -252,7 +263,18 @@ describe('CircuitDesigner', () => {
 
     const state = useCircuitStore.getState()
     const pin = active(state).components.find((c) => c.type === 'input')!
-    expect(pin.attrs).toEqual({ label: 'CLOCK', width: 1 })
+    expect(pin.attrs).toEqual({
+      label: 'CLOCK',
+      width: 1,
+      labelLocation: 'bottom',
+      facing: 'east',
+      labelColor: '',
+      labelBold: false,
+      labelItalic: false,
+      labelUnderline: false,
+      labelSize: 11,
+      labelFont: '',
+    })
   })
 
   it('pokes an input pin to toggle its value', () => {
@@ -530,5 +552,282 @@ describe('CircuitDesigner', () => {
     endWire(`${p.id}:in:0`)
     renderDesigner()
     expect(screen.getAllByTestId('wire-flow').length).toBe(1)
+  })
+
+  it('box-selects components and wires with a rubber-band drag', () => {
+    const { addComponent, beginWire, endWire } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    addComponent('input', { label: 'A' }, 120, 260)
+    const s = useCircuitStore.getState()
+    const gate = active(s).components[0]!
+    const pin = active(s).components[1]!
+    beginWire(`${pin.id}:out:0`)
+    endWire(`${gate.id}:in:0`)
+    useCircuitStore.setState({ tool: 'select' })
+
+    renderDesigner()
+    const canvas = screen.getByTestId('canvas')
+    fireEvent.mouseDown(canvas, { clientX: 100, clientY: 100 })
+    fireEvent.mouseMove(canvas, { clientX: 900, clientY: 900 })
+    expect(screen.getByTestId('box-select')).toBeInTheDocument()
+    fireEvent.mouseUp(canvas)
+
+    const st = useCircuitStore.getState()
+    expect(st.selection).toEqual([gate.id, pin.id])
+    expect(st.selectedWires).toContain(active(st).wires[0]!.id)
+  })
+
+  it('drags every box-selected component together', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    addComponent('input', { label: 'A' }, 120, 260)
+    const s = useCircuitStore.getState()
+    const gate = active(s).components[0]!
+    const pin = active(s).components[1]!
+    s.setSelection([gate.id, pin.id])
+
+    renderDesigner()
+    const canvas = screen.getByTestId('canvas')
+    // grab the selected gate and move the whole selection
+    fireEvent.mouseDown(screen.getByTestId('component-and'), { clientX: 160, clientY: 160 })
+    fireEvent.mouseMove(canvas, { clientX: 200, clientY: 200 })
+    fireEvent.mouseUp(canvas)
+
+    const after = active(useCircuitStore.getState()).components
+    expect(after.find((c) => c.id === gate.id)!.x).toBe(160)
+    expect(after.find((c) => c.id === gate.id)!.y).toBe(160)
+    expect(after.find((c) => c.id === pin.id)!.x).toBe(160)
+    expect(after.find((c) => c.id === pin.id)!.y).toBe(300)
+  })
+
+  it('deletes the whole multi-selection with Delete', () => {
+    const { addComponent, beginWire, endWire } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    addComponent('input', { label: 'A' }, 120, 260)
+    const s = useCircuitStore.getState()
+    const gate = active(s).components[0]!
+    const pin = active(s).components[1]!
+    beginWire(`${pin.id}:out:0`)
+    endWire(`${gate.id}:in:0`)
+    s.setSelection([gate.id, pin.id])
+
+    renderDesigner()
+    fireEvent.keyDown(window, { key: 'Delete' })
+
+    const st = useCircuitStore.getState()
+    expect(active(st).components).toHaveLength(0)
+    expect(active(st).wires).toHaveLength(0)
+    expect(st.selection).toEqual([])
+    expect(st.selectedWires).toEqual([])
+  })
+
+  it('clears the multi-selection with Escape', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    addComponent('input', { label: 'A' }, 120, 260)
+    const s = useCircuitStore.getState()
+    s.setSelection([active(s).components[0]!.id, active(s).components[1]!.id])
+
+    renderDesigner()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    const st = useCircuitStore.getState()
+    expect(st.selection).toEqual([])
+    expect(st.selected).toBeNull()
+  })
+
+  it('deselects on a plain empty-canvas click', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    renderDesigner()
+    const id = active(useCircuitStore.getState()).components[0]!.id
+    expect(useCircuitStore.getState().selection).toEqual([id])
+
+    fireEvent.click(screen.getByTestId('canvas'), { clientX: 50, clientY: 50 })
+    expect(useCircuitStore.getState().selection).toEqual([])
+  })
+
+  it('pans the canvas with right-button drag', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    renderDesigner()
+    const canvas = screen.getByTestId('canvas')
+    fireEvent.mouseDown(canvas, { button: 2, clientX: 100, clientY: 100 })
+    fireEvent.mouseMove(canvas, { clientX: 140, clientY: 80 })
+    fireEvent.mouseUp(canvas)
+    const st = useCircuitStore.getState()
+    expect(st.panX).toBe(80)
+    expect(st.panY).toBe(20)
+    // panning must not disturb the selection
+    expect(st.selection).toEqual([active(st).components[0]!.id])
+  })
+
+  it('pans the canvas with Space + left-drag', () => {
+    renderDesigner()
+    const canvas = screen.getByTestId('canvas')
+    fireEvent.keyDown(window, { code: 'Space' })
+    fireEvent.mouseDown(canvas, { clientX: 100, clientY: 100 })
+    fireEvent.mouseMove(canvas, { clientX: 160, clientY: 130 })
+    fireEvent.mouseUp(canvas)
+    fireEvent.keyUp(window, { code: 'Space' })
+    const st = useCircuitStore.getState()
+    expect(st.panX).toBe(100)
+    expect(st.panY).toBe(70)
+    expect(useCircuitStore.getState().selection).toEqual([])
+  })
+
+  it('shows the multi-selection hint in the attributes panel', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    addComponent('input', { label: 'A' }, 120, 260)
+    const s = useCircuitStore.getState()
+    s.setSelection([active(s).components[0]!.id, active(s).components[1]!.id])
+    renderDesigner()
+    expect(screen.getByTestId('multi-selection-hint').textContent).toContain('2 components selected')
+  })
+
+  it('marks a selected element with corner brackets instead of a dashed box', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    renderDesigner()
+    expect(screen.getByTestId('selection-corners')).toBeInTheDocument()
+    const comp = screen.getByTestId('component-and')
+    expect(comp.querySelector('rect[stroke-dasharray]')).toBeNull()
+  })
+
+  it('renders gates without the &, ≥1, =1 and parity symbols in the body', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    addComponent('OR', {}, 300, 120)
+    addComponent('XOR', {}, 480, 120)
+    addComponent('ODD_PARITY', {}, 120, 260)
+    renderDesigner()
+    expect(screen.queryByText('&')).not.toBeInTheDocument()
+    expect(screen.queryByText('≥1')).not.toBeInTheDocument()
+    expect(screen.queryByText('=1')).not.toBeInTheDocument()
+    expect(screen.queryByText('2k+1')).not.toBeInTheDocument()
+  })
+
+  it('offers top/bottom/left/right/center label locations', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    renderDesigner()
+    const select = screen.getByTestId('attr-labelLocation') as HTMLSelectElement
+    const options = Array.from(select.options).map((o) => o.value)
+    expect(options).toEqual(expect.arrayContaining(['top', 'bottom', 'left', 'right', 'center']))
+  })
+
+  it('places the gate label outside the box for left/right locations', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    renderDesigner()
+    fireEvent.change(screen.getByTestId('attr-labelLocation'), { target: { value: 'left' } })
+    const st = useCircuitStore.getState()
+    expect(active(st).components[0]!.attrs.labelLocation).toBe('left')
+    const label = screen.getByTestId('gate-label')
+    expect(label).toHaveAttribute('text-anchor', 'end')
+    expect(Number(label.getAttribute('x'))).toBeLessThan(0)
+  })
+
+  it('edits label style through the label-style popup', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    renderDesigner()
+    fireEvent.click(screen.getByTestId('btn-label-style'))
+    expect(screen.getByTestId('style-modal-label')).toBeInTheDocument()
+    fireEvent.change(screen.getByTestId('label-size-input'), { target: { value: '18' } })
+    fireEvent.change(screen.getByTestId('label-color-input'), { target: { value: '#ff00aa' } })
+    fireEvent.click(screen.getByTestId('label-labelbold-input'))
+    const st = useCircuitStore.getState()
+    const gate = active(st).components[0]!
+    expect(gate.attrs.labelSize).toBe(18)
+    expect(gate.attrs.labelColor).toBe('#ff00aa')
+    expect(gate.attrs.labelBold).toBe(true)
+    const label = screen.getByTestId('gate-label')
+    expect(label).toHaveAttribute('font-size', '18')
+    expect(label).toHaveAttribute('fill', '#ff00aa')
+    expect(label).toHaveAttribute('font-weight', '700')
+    fireEvent.click(screen.getByTestId('style-modal-close'))
+    expect(screen.queryByTestId('style-modal-label')).not.toBeInTheDocument()
+  })
+
+  it('edits the shape border color through the border-color popup', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('AND', {}, 120, 120)
+    renderDesigner()
+    fireEvent.click(screen.getByTestId('btn-border-color'))
+    expect(screen.getByTestId('style-modal-border')).toBeInTheDocument()
+    fireEvent.change(screen.getByTestId('border-color-input'), { target: { value: '#123456' } })
+    const st = useCircuitStore.getState()
+    expect(active(st).components[0]!.attrs.borderColor).toBe('#123456')
+    const gateBody = screen.getByTestId('component-and').querySelector('[data-testid="gate-body"]')
+    expect(gateBody).toHaveAttribute('stroke', '#123456')
+  })
+
+  it('defaults arity gates (AND/OR) to two inputs', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('AND', {}, 0, 0)
+    addComponent('OR', {}, 200, 0)
+    const st = useCircuitStore.getState()
+    const comps = active(st).components
+    expect(comps[0]!.attrs.inputs).toBe(2)
+    expect(comps[1]!.attrs.inputs).toBe(2)
+    expect(portCountOf('AND', comps[0]!.attrs)).toEqual({ inputs: 2, outputs: 1 })
+  })
+
+  it('computes tight gate body bounds for the selection corners', () => {
+    expect(gateBodyBounds('AND', 2)).toEqual({ x: 34, y: 17, width: 70, height: 66 })
+    expect(gateBodyBounds('NAND', 2)).toEqual({ x: 34, y: 17, width: 84, height: 66 })
+    expect(gateBodyBounds('XOR', 2)).toEqual({ x: 24, y: 17, width: 80, height: 66 })
+    expect(gateBodyBounds('ODD_PARITY', 2)).toEqual({ x: 34, y: 12, width: 70, height: 76 })
+    expect(gateBodyBounds('NOT', 1)).toEqual({ x: 54, y: 34, width: 56, height: 32 })
+  })
+
+  it('renders the input pin as an inner square with no outer box and no default label', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('input', {}, 0, 0)
+    renderDesigner()
+    const pin = screen.getByTestId('component-input')
+    expect(pin.querySelector('[data-testid="input-pin-square"]')).not.toBeNull()
+    // the 140×100 outer box must not be drawn for the input pin
+    expect(pin.querySelector('rect[width="140"]')).toBeNull()
+    expect(pin.querySelector('[data-testid="pin-label"]')?.textContent).toBe('')
+  })
+
+  it('offers only outside label locations (top/bottom/left/right) for the input pin', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('input', {}, 0, 0)
+    renderDesigner()
+    const select = screen.getByTestId('attr-labelLocation') as HTMLSelectElement
+    const options = Array.from(select.options).map((o) => o.value)
+    expect(options).toEqual(['top', 'bottom', 'left', 'right'])
+    expect(options).not.toContain('center')
+  })
+
+  it('places the input pin label outside the square for left/top locations', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('input', { label: 'A' }, 0, 0)
+    renderDesigner()
+    const pin = screen.getByTestId('component-input')
+
+    fireEvent.change(screen.getByTestId('attr-labelLocation'), { target: { value: 'left' } })
+    expect(active(useCircuitStore.getState()).components[0]!.attrs.labelLocation).toBe('left')
+    const leftLabel = pin.querySelector('[data-testid="pin-label"]')!
+    expect(leftLabel).toHaveAttribute('text-anchor', 'end')
+    expect(Number(leftLabel.getAttribute('x'))).toBeLessThan(34)
+
+    fireEvent.change(screen.getByTestId('attr-labelLocation'), { target: { value: 'top' } })
+    const topLabel = pin.querySelector('[data-testid="pin-label"]')!
+    expect(Number(topLabel.getAttribute('y'))).toBeLessThan(28)
+  })
+
+  it('defaults the input connection facing to east and offers north/south/west', () => {
+    const { addComponent } = useCircuitStore.getState()
+    addComponent('input', {}, 0, 0)
+    renderDesigner()
+    const sel = screen.getByTestId('attr-facing') as HTMLSelectElement
+    expect(Array.from(sel.options).map((o) => o.value)).toEqual(['east', 'west', 'north', 'south'])
+    expect(active(useCircuitStore.getState()).components[0]!.attrs.facing).toBe('east')
+    fireEvent.change(sel, { target: { value: 'north' } })
+    expect(active(useCircuitStore.getState()).components[0]!.attrs.facing).toBe('north')
   })
 })

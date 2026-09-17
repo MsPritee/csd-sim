@@ -12,6 +12,17 @@ impact belong in `CHANGELOG.md`, not here.
 
 ## Log
 
+### 2026-09-17 20:45
+- **Added**: Circuit Designer refinements — gates with a configurable input count default to **2 inputs** (range stays 2–32; unary stay 1); selection corners smaller (pad 2, len 10) and body-hugging via exported `gateBodyBounds(gate, inputCount)` for gates and `INPUT_PIN_SQUARE` for pins (all other components keep the full box); input pin redesigned — outer border removed, only the inner 34×34 value square remains, label drawn **outside only** (`top`/`bottom`/`left`/`right`, default `bottom`, no `center`) and **default blank**, selection highlights only the inner square's edges; new `facing` option `east`(default)/`west`/`north`/`south` for input pins with facing-aware port position (`inputPinPortLocal`) and facing-aware `portLocalPos` input branch; output pins unchanged.
+- **Added**: Supersedes/extends the 2026-09-17 19:30 selection-corners entry — corners now hug the visible gate body / pin square instead of the full 140×100 box.
+
+### 2026-09-17 19:30
+- **Added**: Circuit Designer visual polish — selection shows only four corner brackets (`SelectionCorners`) instead of a dashed rectangle; `&`/`≥1`/`=1`/`2k±1` glyph symbols removed from all gate centers; label positions extended to `left`/`right` (drawn OUTSIDE the gate) and `center` (drawn inside like top/bottom) via new `LABEL_LOC` options and `labelPosition(loc,w,h)`; label text styling pop-up modal (color, bold/italic/underline, size, font) reachable only from the attributes panel `btn-label-style`; gate-shape border color via the same modal pattern (`btn-border-color`); new schema keys `LABEL_STYLE_ATTRS` (`labelColor`/`labelBold`/`labelItalic`/`labelUnderline`/`labelSize`/`labelFont`) + `BORDER_COLOR_ATTR` (`borderColor`) applied through `labelAware()` to gates and all label-bearing components (text: style keys only).
+
+### 2026-09-17 18:30
+- **Added**: Circuit Designer multi-selection — rubber-band (box) select on empty-canvas left-drag, box captures both components and wires, drag a selected group together, Delete/Backspace removes the whole selection, Ctrl+R rotates it, right/middle-drag or Space+left-drag pans the canvas, empty-canvas click/Escape deselects, and a multi-selection hint in the attributes panel; store gains `selection`/`selectedWires` plus batch `setSelection`/`moveComponents`/`removeComponents`/`removeWires`/`rotateComponents` (single undo entries).
+- **Added**: Centered, equally-spaced input pin layout — `centerRow` rewritten so any pin count is symmetric about the 100px box (y=50, `gap=min(36,60/(n-1))`), keeping the classic 2-pin 32/68; `ComponentGlyph.rowYs` and `SubcircuitGlyph` now both use it (fixes the previous off-center placement for n≥3).
+
 ### 2026-09-17 11:30
 - **Added**: Dynamic variable name selection in the K-Map simulator — per-variable dropdown (presets A,B,C,D,W,X,Y,Z,P,Q,R,S,M,N,L,K) + "Other" single-letter custom input via a `+ Names` editor in the toolbar; application-layer batch validation (`validateVariableNames`), name-preserving variable-count scaling (`adjustVariablesToCount` 2–5 vars) and cell-value-preserving renames (`renameKMapVariables`, minterm bit-shift repaint); store `setVariables` preserves entered values; new editor/store/application test suites (43 tests).
 

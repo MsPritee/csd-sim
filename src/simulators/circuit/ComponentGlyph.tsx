@@ -2,15 +2,14 @@ import React from 'react'
 import { attrNumber, packedValue, bitValue } from '../../core/circuit'
 import type { NetValue } from '../../core/circuit'
 import type { AttrValue } from '../../core/circuit/descriptors'
-import { wireColor, pinText } from './layout'
+import { wireColor, pinText, centerRow } from './layout'
 
 const IN_X = 8
 const OUT_X = 132
 
-/** Port y-positions distributed across the standard 100px-tall box. */
+/** Port y-positions distributed evenly, centered on the component ("centerRow"). */
 function rowYs(count: number): number[] {
-  if (count === 1) return [50]
-  return Array.from({ length: count }, (_, i) => 20 + (60 * i) / Math.max(1, count - 1))
+  return Array.from({ length: count }, (_, i) => centerRow(i, count))
 }
 
 /**

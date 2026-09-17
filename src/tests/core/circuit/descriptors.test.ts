@@ -33,17 +33,60 @@ describe('component descriptors', () => {
   })
 
   it('fills schema defaults and merges partials', () => {
-    expect(defaultAttrs('AND')).toEqual({ width: 1, inputs: 5, labelLocation: 'bottom' })
-    expect(defaultAttrs('NOT')).toEqual({ width: 1, labelLocation: 'bottom' })
-    expect(defaultAttrs('input')).toEqual({ label: 'A', width: 1 })
-    expect(normalizeAttrs('input', { label: 'X' })).toEqual({ label: 'X', width: 1 })
+    expect(defaultAttrs('AND')).toEqual({
+      width: 1,
+      inputs: 2,
+      labelLocation: 'bottom',
+      labelColor: '',
+      labelBold: false,
+      labelItalic: false,
+      labelUnderline: false,
+      labelSize: 11,
+      labelFont: '',
+      borderColor: '',
+    })
+    expect(defaultAttrs('NOT')).toEqual({
+      width: 1,
+      labelLocation: 'bottom',
+      labelColor: '',
+      labelBold: false,
+      labelItalic: false,
+      labelUnderline: false,
+      labelSize: 11,
+      labelFont: '',
+      borderColor: '',
+    })
+    expect(defaultAttrs('input')).toEqual({
+      label: '',
+      width: 1,
+      labelLocation: 'bottom',
+      facing: 'east',
+      labelColor: '',
+      labelBold: false,
+      labelItalic: false,
+      labelUnderline: false,
+      labelSize: 11,
+      labelFont: '',
+    })
+    expect(normalizeAttrs('input', { label: 'X' })).toEqual({
+      label: 'X',
+      width: 1,
+      labelLocation: 'bottom',
+      facing: 'east',
+      labelColor: '',
+      labelBold: false,
+      labelItalic: false,
+      labelUnderline: false,
+      labelSize: 11,
+      labelFont: '',
+    })
     expect(normalizeAttrs('subcircuit', {})).toEqual({ libraryId: '' })
     expect(defaultAttrs('splitter')).toEqual({ width: 8, fanOut: 8 })
     expect(defaultAttrs('pull')).toEqual({ pull: 1 })
   })
 
   it('resolves port counts from attrs and descriptors', () => {
-    expect(portCountOf('AND', defaultAttrs('AND'))).toEqual({ inputs: 5, outputs: 1 })
+    expect(portCountOf('AND', defaultAttrs('AND'))).toEqual({ inputs: 2, outputs: 1 })
     expect(portCountOf('AND', normalizeAttrs('AND', { inputs: 4 }))).toEqual({ inputs: 4, outputs: 1 })
     expect(portCountOf('NOT', defaultAttrs('NOT'))).toEqual({ inputs: 1, outputs: 1 })
     expect(portCountOf('input', defaultAttrs('input'))).toEqual({ inputs: 0, outputs: 1 })

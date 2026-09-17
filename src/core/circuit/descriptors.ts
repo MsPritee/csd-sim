@@ -66,8 +66,8 @@ function textAttr(key: string, label: string, def = ''): AttributeSchemaEntry {
 }
 
 const WIDTH_ATTR = numberAttr('width', 'Bit Width', 1, 1, 32, 1)
-/** Logisim gates default to 5 inputs and accept up to 32. */
-const INPUTS_ATTR = numberAttr('inputs', 'Number of Inputs', 5, 2, 32, 1)
+/** Gates with a user-configurable input count accept 2..32 and default to 2. */
+const INPUTS_ATTR = numberAttr('inputs', 'Number of Inputs', 2, 2, 32, 1)
 
 /** Bit width capped at 16 for the arithmetic library (keeps shift math simple). */
 const BUS_ATTR = numberAttr('width', 'Bit Width', 8, 1, 16, 1)
@@ -85,13 +85,61 @@ const LINE_COUNT = numberAttr('dataCount', 'Number of Inputs', 4, 2, 32, 1)
 /** Decoder select-bit count (1..5  ⇒  2..32 one-hot outputs). */
 const SEL_BITS = numberAttr('selBits', 'Select Bits', 2, 1, 5, 1)
 
-/** Where a component's label text is drawn (Phase 8 placement polish). */
-const LABEL_LOC: AttributeSchemaEntry = { key: 'labelLocation', label: 'Label Location', type: 'select', default: 'bottom', options: ['bottom', 'top'] }
+/** Where a component's label text is drawn (top/bottom/center inside, left/right outside). */
+const LABEL_LOC: AttributeSchemaEntry = {
+  key: 'labelLocation',
+  label: 'Label Location',
+  type: 'select',
+  default: 'bottom',
+  options: ['top', 'bottom', 'left', 'right', 'center'],
+}
+
+/**
+ * Label text style attributes. These are edited only through the label-style
+ * popup in the attributes panel, so they are kept out of the plain row list.
+ */
+const LABEL_STYLE_ATTRS: readonly AttributeSchemaEntry[] = [
+  { key: 'labelColor', label: 'Label Color', type: 'text', default: '' },
+  { key: 'labelBold', label: 'Bold', type: 'boolean', default: false },
+  { key: 'labelItalic', label: 'Italic', type: 'boolean', default: false },
+  { key: 'labelUnderline', label: 'Underline', type: 'boolean', default: false },
+  { key: 'labelSize', label: 'Label Size', type: 'number', default: 11, min: 8, max: 40, step: 1 },
+  { key: 'labelFont', label: 'Label Font', type: 'select', default: '', options: ['', 'monospace', 'serif', 'sans-serif', 'cursive'] },
+]
+
+/** Shape outline override (edited through the border-color popup). */
+const BORDER_COLOR_ATTR: AttributeSchemaEntry = { key: 'borderColor', label: 'Border Color', type: 'text', default: '' }
+
+/** Attach label placement + style + border attrs to a descriptor's list (appended last). */
+function labelAware(attrs: readonly AttributeSchemaEntry[]): AttributeSchemaEntry[] {
+  return [...attrs, LABEL_LOC, ...LABEL_STYLE_ATTRS, BORDER_COLOR_ATTR]
+}
+
+/**
+ * Which side of an input pin its connection (and wire port) faces.
+ * Defaults to east so wires leave the pin to the right.
+ */
+const PIN_FACING: AttributeSchemaEntry = {
+  key: 'facing',
+  label: 'Facing',
+  type: 'select',
+  default: 'east',
+  options: ['east', 'west', 'north', 'south'],
+}
+
+/** Input-pin labels are drawn outside the pin only (no `center` option). */
+const PIN_LABEL_LOC: AttributeSchemaEntry = {
+  key: 'labelLocation',
+  label: 'Label Location',
+  type: 'select',
+  default: 'bottom',
+  options: ['top', 'bottom', 'left', 'right'],
+}
 
 /** Port counts shared by all arity gates: 1 output; inputs from the `inputs` attr. */
 function gatePortCount(attrs: Readonly<Record<string, AttrValue>>): PortCounts {
   const v = attrs['inputs']
-  const inputs = typeof v === 'number' ? v : 5
+  const inputs = typeof v === 'number' ? v : 2
   return { inputs, outputs: 1 }
 }
 
@@ -135,7 +183,9 @@ function gateDescriptor(gate: GateType): ComponentDescriptor {
     type: gate,
     label,
     category: 'Gates',
-    attributes: arity ? [WIDTH_ATTR, { ...INPUTS_ATTR, default: 5 }, LABEL_LOC] : [WIDTH_ATTR, LABEL_LOC],
+    attributes: arity
+      ? [WIDTH_ATTR, { ...INPUTS_ATTR, default: 2 }, ...labelAware([])]
+      : labelAware([WIDTH_ATTR]),
     portCount: (attrs) => {
       if (unary) return { inputs: 1, outputs: 1 }
       if (controlled) return { inputs: 2, outputs: 1 }
@@ -147,12 +197,17 @@ function gateDescriptor(gate: GateType): ComponentDescriptor {
 }
 
 function pinDescriptor(type: 'input' | 'output'): ComponentDescriptor {
+  const input = type === 'input'
   return {
     type,
-    label: type === 'input' ? 'Input Pin' : 'Output Pin',
+    label: input ? 'Input Pin' : 'Output Pin',
     category: 'Wiring',
-    attributes: [textAttr('label', 'Label', type === 'input' ? 'A' : 'Y'), WIDTH_ATTR],
-    portCount: () => (type === 'input' ? { inputs: 0, outputs: 1 } : { inputs: 1, outputs: 0 }),
+    // Input pin: blank label by default; label sits outside only (top/bottom/left/right);
+    // facing picks the connection side (default east). Label style lives in the popup.
+    attributes: input
+      ? [textAttr('label', 'Label', ''), WIDTH_ATTR, PIN_LABEL_LOC, PIN_FACING, ...LABEL_STYLE_ATTRS]
+      : [textAttr('label', 'Label', 'Y'), WIDTH_ATTR],
+    portCount: () => (input ? { inputs: 0, outputs: 1 } : { inputs: 1, outputs: 0 }),
     isStateful: false,
   }
 }
@@ -168,7 +223,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'dff',
       label: 'D Flip-Flop',
       category: 'Sequential',
-      attributes: [textAttr('label', 'Label')],
+      attributes: labelAware([textAttr('label', 'Label')]),
       portCount: () => ({ inputs: 2, outputs: 2 }),
       isStateful: true,
     },
@@ -191,7 +246,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'text',
       label: 'Text',
       category: 'Base',
-      attributes: [textAttr('text', 'Text')],
+      attributes: [textAttr('text', 'Text'), ...LABEL_STYLE_ATTRS],
       portCount: () => ({ inputs: 0, outputs: 0 }),
       isStateful: false,
     },
@@ -203,7 +258,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'constant',
       label: 'Constant',
       category: 'Wiring',
-      attributes: [BUS_ATTR, numberAttr('value', 'Value', 0, 0, 65535, 1), textAttr('label', 'Label', 'Constant')],
+      attributes: [BUS_ATTR, numberAttr('value', 'Value', 0, 0, 65535, 1), ...labelAware([textAttr('label', 'Label', 'Constant')])],
       portCount: () => ({ inputs: 0, outputs: 1 }),
       isStateful: false,
     },
@@ -214,7 +269,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'probe',
       label: 'Probe',
       category: 'Wiring',
-      attributes: [textAttr('label', 'Label', 'Probe')],
+      attributes: labelAware([textAttr('label', 'Label', 'Probe')]),
       portCount: () => ({ inputs: 1, outputs: 0 }),
       isStateful: false,
     },
@@ -225,7 +280,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'tunnel',
       label: 'Tunnel',
       category: 'Wiring',
-      attributes: [textAttr('label', 'Label', 'T')],
+      attributes: labelAware([textAttr('label', 'Label', 'T')]),
       portCount: () => ({ inputs: 1, outputs: 1 }),
       isStateful: false,
     },
@@ -236,7 +291,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'clock',
       label: 'Clock',
       category: 'Wiring',
-      attributes: [textAttr('label', 'Label', 'Clock')],
+      attributes: labelAware([textAttr('label', 'Label', 'Clock')]),
       portCount: () => ({ inputs: 0, outputs: 1 }),
       isStateful: true,
     },
@@ -356,7 +411,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'led',
       label: 'LED',
       category: 'IO',
-      attributes: [textAttr('label', 'Label', 'LED')],
+      attributes: labelAware([textAttr('label', 'Label', 'LED')]),
       portCount: () => ({ inputs: 1, outputs: 0 }),
       isStateful: false,
     },
@@ -367,7 +422,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'button',
       label: 'Button',
       category: 'IO',
-      attributes: [textAttr('label', 'Label', 'B'), WIDTH_ATTR],
+      attributes: labelAware([textAttr('label', 'Label', 'B'), WIDTH_ATTR]),
       portCount: () => ({ inputs: 0, outputs: 1 }),
       isStateful: false,
     },
@@ -378,7 +433,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'segment',
       label: '7-Segment Display',
       category: 'IO',
-      attributes: [textAttr('label', 'Label', '7-Segment')],
+      attributes: labelAware([textAttr('label', 'Label', '7-Segment')]),
       portCount: () => ({ inputs: 1, outputs: 0 }),
       isStateful: false,
     },
@@ -390,7 +445,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'adder',
       label: 'Adder',
       category: 'Arithmetic',
-      attributes: [BUS_ATTR, textAttr('label', 'Label', 'Adder')],
+      attributes: labelAware([BUS_ATTR, textAttr('label', 'Label', 'Adder')]),
       portCount: () => ({ inputs: 3, outputs: 2 }),
       isStateful: false,
     },
@@ -401,7 +456,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'subtractor',
       label: 'Subtractor',
       category: 'Arithmetic',
-      attributes: [BUS_ATTR, textAttr('label', 'Label', 'Subtractor')],
+      attributes: labelAware([BUS_ATTR, textAttr('label', 'Label', 'Subtractor')]),
       portCount: () => ({ inputs: 3, outputs: 2 }),
       isStateful: false,
     },
@@ -412,7 +467,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'comparator',
       label: 'Comparator',
       category: 'Arithmetic',
-      attributes: [BUS_ATTR, textAttr('label', 'Label', 'Comparator')],
+      attributes: labelAware([BUS_ATTR, textAttr('label', 'Label', 'Comparator')]),
       portCount: () => ({ inputs: 2, outputs: 3 }),
       isStateful: false,
     },
@@ -423,7 +478,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'negator',
       label: 'Negator',
       category: 'Arithmetic',
-      attributes: [BUS_ATTR, textAttr('label', 'Label', 'Negator')],
+      attributes: labelAware([BUS_ATTR, textAttr('label', 'Label', 'Negator')]),
       portCount: () => ({ inputs: 1, outputs: 1 }),
       isStateful: false,
     },
@@ -435,7 +490,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'jk',
       label: 'JK Flip-Flop',
       category: 'Memory',
-      attributes: [textAttr('label', 'Label', 'JK')],
+      attributes: labelAware([textAttr('label', 'Label', 'JK')]),
       portCount: () => ({ inputs: 3, outputs: 2 }),
       isStateful: true,
     },
@@ -446,7 +501,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 't',
       label: 'T Flip-Flop',
       category: 'Memory',
-      attributes: [textAttr('label', 'Label', 'T')],
+      attributes: labelAware([textAttr('label', 'Label', 'T')]),
       portCount: () => ({ inputs: 2, outputs: 2 }),
       isStateful: true,
     },
@@ -457,7 +512,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'sr',
       label: 'SR Flip-Flop',
       category: 'Memory',
-      attributes: [textAttr('label', 'Label', 'SR')],
+      attributes: labelAware([textAttr('label', 'Label', 'SR')]),
       portCount: () => ({ inputs: 3, outputs: 2 }),
       isStateful: true,
     },
@@ -468,7 +523,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'register',
       label: 'Register',
       category: 'Memory',
-      attributes: [BUS_ATTR, textAttr('label', 'Label', 'Register')],
+      attributes: labelAware([BUS_ATTR, textAttr('label', 'Label', 'Register')]),
       portCount: () => ({ inputs: 2, outputs: 1 }),
       isStateful: true,
     },
@@ -479,7 +534,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'counter',
       label: 'Counter',
       category: 'Memory',
-      attributes: [BUS_ATTR, numberAttr('direction', 'Count Direction', 1, 0, 1, 1), textAttr('label', 'Label', 'Counter')],
+      attributes: labelAware([BUS_ATTR, numberAttr('direction', 'Count Direction', 1, 0, 1, 1), textAttr('label', 'Label', 'Counter')]),
       portCount: () => ({ inputs: 2, outputs: 1 }),
       isStateful: true,
     },
@@ -490,7 +545,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'ram',
       label: 'RAM',
       category: 'Memory',
-      attributes: [BUS_ATTR, numberAttr('addrBits', 'Address Bits', 4, 1, 8, 1), textAttr('label', 'Label', 'RAM')],
+      attributes: labelAware([BUS_ATTR, numberAttr('addrBits', 'Address Bits', 4, 1, 8, 1), textAttr('label', 'Label', 'RAM')]),
       portCount: () => ({ inputs: 4, outputs: 1 }),
       isStateful: true,
     },
@@ -501,7 +556,7 @@ export const COMPONENT_DESCRIPTORS: ReadonlyMap<string, ComponentDescriptor> = n
       type: 'rom',
       label: 'ROM',
       category: 'Memory',
-      attributes: [BUS_ATTR, numberAttr('addrBits', 'Address Bits', 4, 1, 8, 1), textAttr('content', 'Contents', ''), textAttr('label', 'Label', 'ROM')],
+      attributes: labelAware([BUS_ATTR, numberAttr('addrBits', 'Address Bits', 4, 1, 8, 1), textAttr('content', 'Contents', ''), textAttr('label', 'Label', 'ROM')]),
       portCount: () => ({ inputs: 1, outputs: 1 }),
       isStateful: true,
     },

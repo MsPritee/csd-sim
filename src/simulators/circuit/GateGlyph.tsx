@@ -1,4 +1,5 @@
-import { pinText, centerRow, COMP_W, COMP_H } from './layout'
+import { pinText, centerRow, COMP_W, COMP_H, labelPosition, inputPinPortLocal, INPUT_PIN_SQUARE, pinLabelPosition } from './layout'
+import type { LabelLocation, LabelTextStyle, PinFacing, PinLabelLocation } from './layout'
 import type { GateType } from '../../core/gates/types'
 import { bitValue } from '../../core/circuit'
 import type { NetValue } from '../../core/circuit'
@@ -120,10 +121,6 @@ interface GateShape {
   readonly path: string
   /** Extra stroke-only curve (XOR's doubled left edge). */
   readonly accent?: string
-  /** Logisim symbol label drawn inside the body. */
-  readonly symbol?: string
-  /** x-centre of the inside symbol. */
-  readonly symbolX: number
   /** Body width for scaling calculations. */
   readonly bodyWidth: number
   /** Body height for scaling calculations. */
@@ -155,12 +152,10 @@ function shaped(gate: GateType, inputCount: number): GateShape {
     return left - IN_X
   })
   
-  if (gate === 'AND' || gate === 'NAND') {
+if (gate === 'AND' || gate === 'NAND') {
     return {
       left,
       tip: OUTPUT_TIP_X,
-      symbol: '&',
-      symbolX: (left + OUTPUT_TIP_X) / 2,
       path: andPath(bodyWidth, bodyHeight),
       bodyWidth,
       bodyHeight,
@@ -168,13 +163,11 @@ function shaped(gate: GateType, inputCount: number): GateShape {
       hasBubble: gate === 'NAND',
     }
   }
-  
+
   if (gate === 'OR' || gate === 'NOR') {
     return {
       left,
       tip: OUTPUT_TIP_X,
-      symbol: '≥1',
-      symbolX: (left + OUTPUT_TIP_X) / 2,
       path: orPath(bodyWidth, bodyHeight),
       bodyWidth,
       bodyHeight,
@@ -182,14 +175,12 @@ function shaped(gate: GateType, inputCount: number): GateShape {
       hasBubble: gate === 'NOR',
     }
   }
-  
+
   if (gate === 'XOR' || gate === 'XNOR') {
     const { path, accent } = xorPath(bodyWidth, bodyHeight)
     return {
       left: left - 10,
       tip: OUTPUT_TIP_X,
-      symbol: '=1',
-      symbolX: (left + OUTPUT_TIP_X) / 2,
       accent,
       path,
       bodyWidth,
@@ -198,13 +189,11 @@ function shaped(gate: GateType, inputCount: number): GateShape {
       hasBubble: gate === 'XNOR',
     }
   }
-  
+
   if (gate === 'ODD_PARITY' || gate === 'EVEN_PARITY') {
     return {
       left,
       tip: OUTPUT_TIP_X,
-      symbol: gate === 'ODD_PARITY' ? '2k+1' : '2k',
-      symbolX: (left + OUTPUT_TIP_X) / 2,
       path: `M ${left} 12 L ${OUTPUT_TIP_X} 12 L ${OUTPUT_TIP_X} 88 L ${left} 88 Z`,
       bodyWidth,
       bodyHeight,
@@ -212,12 +201,11 @@ function shaped(gate: GateType, inputCount: number): GateShape {
       hasBubble: false,
     }
   }
-  
+
   // BUFFER, NOT, CON_BUF, CON_INV: compact Logisim triangle
   return {
     left: TRI_BASE,
     tip: TRI_TIP,
-    symbolX: (TRI_BASE + TRI_TIP) / 2,
     path: `M ${TRI_TIP} ${OUT_ROW} L ${TRI_BASE} ${OUT_ROW - TRI_HALF} L ${TRI_BASE} ${OUT_ROW + TRI_HALF} Z`,
     bodyWidth: TRI_TIP - TRI_BASE,
     bodyHeight: TRI_HALF * 2,
@@ -229,6 +217,30 @@ function shaped(gate: GateType, inputCount: number): GateShape {
 /** Pin y-positions aligned with the engine's port rows (single source of truth). */
 function pinRows(count: number): number[] {
   return Array.from({ length: count }, (_, i) => centerRow(i, count))
+}
+
+/**
+ * Tight bounding box of the drawn gate body (including the negation bubble, if
+ * any). Used for the selection corner brackets so they hug the gate instead of
+ * the full 140×100 component box.
+ */
+export function gateBodyBounds(gate: GateType, inputCount: number): { x: number; y: number; width: number; height: number } {
+  const shape = shaped(gate, inputCount)
+  let y: number
+  let height: number
+  if (gate === 'ODD_PARITY' || gate === 'EVEN_PARITY') {
+    y = 12
+    height = 76
+  } else if (gate === 'BUFFER' || gate === 'NOT' || gate === 'CON_BUF' || gate === 'CON_INV') {
+    y = OUT_ROW - TRI_HALF
+    height = TRI_HALF * 2
+  } else {
+    y = OUT_ROW - shape.bodyHeight / 2
+    height = shape.bodyHeight
+  }
+  const bubbleR = gate === 'NOT' || gate === 'CON_INV' ? 6 : 7
+  const right = shape.hasBubble ? shape.tip + bubbleR * 2 : shape.tip
+  return { x: shape.left, y, width: right - shape.left, height }
 }
 
 /** Check if a gate has negation dongles on specific inputs. */
@@ -243,11 +255,13 @@ interface GateGlyphProps {
   readonly inputs: readonly (NetValue | undefined)[]
   readonly output: NetValue | undefined
   readonly label?: string
-  readonly labelLocation?: 'top' | 'bottom'
+  readonly labelLocation?: LabelLocation
+  readonly labelStyle?: LabelTextStyle
+  readonly borderColor?: string
 }
 
 /** Single Logisim-shaped gate drawn to the canvas coordinate system (no box). */
-export function GateGlyph({ gate, inputs, output, label, labelLocation }: GateGlyphProps) {
+export function GateGlyph({ gate, inputs, output, label, labelLocation, labelStyle, borderColor }: GateGlyphProps) {
   const shape = shaped(gate, inputs.length)
   const ys = pinRows(inputs.length)
   const isInverter = gate === 'NOT' || gate === 'CON_INV'
@@ -256,7 +270,9 @@ export function GateGlyph({ gate, inputs, output, label, labelLocation }: GateGl
   const bubbleX = shape.tip + bubbleR
   const outStart = hasBubble ? bubbleX + bubbleR : shape.tip
   const isControlled = gate === 'CON_BUF' || gate === 'CON_INV'
-  const labelY = labelLocation === 'top' ? 8 : COMP_H - 4
+  const outline = borderColor || 'var(--border-light)'
+  const labelTextStyle = labelStyle ?? { fontSize: 11, fill: 'var(--text-secondary)', fontWeight: 400, fontStyle: 'normal' as const, textDecoration: 'none' as const, fontFamily: undefined }
+  const labelAnchor = labelPosition(labelLocation ?? 'bottom', COMP_W, COMP_H)
 
   return (
     <g>
@@ -307,28 +323,34 @@ export function GateGlyph({ gate, inputs, output, label, labelLocation }: GateGl
         return null
       })}
       {shape.accent && (
-        <path d={shape.accent} fill="none" stroke="var(--border-light)" strokeWidth="2.5" />
+        <path d={shape.accent} fill="none" stroke={outline} strokeWidth="2.5" />
       )}
-      <path d={shape.path} fill="var(--bg-card)" stroke="var(--border-light)" strokeWidth="2.5" />
+      <path
+        d={shape.path}
+        fill="var(--bg-card)"
+        stroke={outline}
+        strokeWidth="2.5"
+        data-testid="gate-body"
+      />
       {label && (
-        <text x={COMP_W / 2} y={labelY} textAnchor="middle" fontSize="11" fill="var(--text-secondary)" style={{ userSelect: 'none' }}>
+        <text
+          x={labelAnchor.x}
+          y={labelAnchor.y}
+          textAnchor={labelAnchor.anchor}
+          fontSize={labelTextStyle.fontSize}
+          fill={labelTextStyle.fill}
+          fontWeight={labelTextStyle.fontWeight}
+          fontStyle={labelTextStyle.fontStyle}
+          textDecoration={labelTextStyle.textDecoration}
+          fontFamily={labelTextStyle.fontFamily}
+          style={{ userSelect: 'none' }}
+          data-testid="gate-label"
+        >
           {label}
         </text>
       )}
-      {shape.symbol && (
-        <text
-          x={shape.symbolX}
-          y={shape.symbol === '2k+1' || shape.symbol === '2k' ? OUT_ROW + 4 : OUT_ROW + 5}
-          textAnchor="middle"
-          fontSize={shape.symbol === '2k+1' || shape.symbol === '2k' ? 12 : 15}
-          fill="var(--text-secondary)"
-          style={{ userSelect: 'none' }}
-        >
-          {shape.symbol}
-        </text>
-      )}
       {hasBubble && (
-        <circle cx={bubbleX} cy={OUT_ROW} r={bubbleR} fill="var(--bg-card)" stroke="var(--border-light)" strokeWidth="2" />
+        <circle cx={bubbleX} cy={OUT_ROW} r={bubbleR} fill="var(--bg-card)" stroke={outline} strokeWidth="2" />
       )}
       <line x1={outStart} y1={OUT_ROW} x2={OUT_X} y2={OUT_ROW} stroke="var(--border-light)" strokeWidth="2" />
       {/* pins — fixed columns matching the engine port rows; stubs join them to the body */}
@@ -345,36 +367,63 @@ interface PinSymbolProps {
   readonly label: string
   readonly value: NetValue | undefined
   readonly width?: number
+  /** Input pin only: where the label is drawn (outside the square). */
+  readonly labelLocation?: PinLabelLocation
+  /** Input pin only: label text styling from the label-style popup. */
+  readonly labelStyle?: LabelTextStyle
+  /** Input pin only: which side the connection dot / wire port faces. */
+  readonly facing?: PinFacing
 }
 
 /**
- * Pins drawn as in Logisim: an INPUT pin is a rectangle (value shown inside),
- * an OUTPUT pin is a circle (value shown inside). The label sits beside it and
- * a single connection dot marks the facing side. A multi-bit pin shows a
- * "N-bit" tag so the bus width is visible at a glance.
+ * Pins drawn as in Logisim: an INPUT pin is a value square (no outer border —
+ * the surrounding box is removed in the designer) with a connection dot on the
+ * facing side and its label placed outside the square; an OUTPUT pin is a
+ * circle (value shown inside). A multi-bit pin shows a "N-bit" tag so the bus
+ * width is visible at a glance.
  */
-export function PinSymbol({ type, label, value, width }: PinSymbolProps) {
+export function PinSymbol({ type, label, value, width, labelLocation, labelStyle, facing }: PinSymbolProps) {
   const isInput = type === 'input'
   const bit = bitValue(value)
   const textColor =
     bit === 1 ? '#4ade80' : bit === 0 ? '#16a34a' : bit === 'E' ? '#ef4444' : 'var(--text-muted)'
   const dotColor = bit === 1 ? '#4ade80' : bit === 'E' ? '#ef4444' : 'var(--text-muted)'
   const widthTag = (width ?? 1) > 1 ? `${width}b` : null
+  const labelTextStyle =
+    labelStyle ??
+    ({ fontSize: 11, fill: 'var(--text-secondary)', fontWeight: 400, fontStyle: 'normal' as const, textDecoration: 'none' as const, fontFamily: undefined } as LabelTextStyle)
 
   if (isInput) {
+    const s = INPUT_PIN_SQUARE
+    const dot = inputPinPortLocal(facing ?? 'east')
+    const labelAnchor = pinLabelPosition(labelLocation ?? 'bottom')
     return (
       <g>
-        {/* rectangle body */}
-        <rect x={34} y={28} width={34} height={34} rx={3} fill="var(--bg-card)" stroke="var(--border-light)" strokeWidth={2} data-pin="out:0" />
-        {/* connection dot on the facing (right) side */}
-        <circle cx={68} cy={45} r={5} fill={dotColor} />
+        {/* inner value square (the only body; no outer border/box) */}
+        <rect x={s.x} y={s.y} width={s.width} height={s.height} rx={2} fill="var(--bg-card)" stroke="var(--border-light)" strokeWidth={2} data-pin="out:0" data-testid="input-pin-square" />
+        {/* connection dot on the facing side */}
+        <circle cx={dot.x} cy={dot.y} r={5} fill={dotColor} />
         {/* value drawn inside */}
-        <text x={42} y={51} fontSize={16} fontWeight="bold" fill={textColor} fontFamily="monospace">{pinText(value)}</text>
+        <text x={s.x + 8} y={51} fontSize={16} fontWeight="bold" fill={textColor} fontFamily="monospace">{pinText(value)}</text>
         {widthTag && (
-          <text x={34} y={24} fontSize="9" fill="var(--text-muted)" style={{ userSelect: 'none' }}>{widthTag}</text>
+          <text x={s.x} y={s.y - 4} fontSize="9" fill="var(--text-muted)" style={{ userSelect: 'none' }}>{widthTag}</text>
         )}
-        {/* label */}
-        <text x={34} y={78} fontSize="13" fill="var(--text-secondary)" style={{ userSelect: 'none' }}>{label}</text>
+        {/* label — outside the square (left/right/top/bottom) */}
+        <text
+          x={labelAnchor.x}
+          y={labelAnchor.y}
+          textAnchor={labelAnchor.anchor}
+          fontSize={labelTextStyle.fontSize}
+          fill={labelTextStyle.fill}
+          fontWeight={labelTextStyle.fontWeight}
+          fontStyle={labelTextStyle.fontStyle}
+          textDecoration={labelTextStyle.textDecoration}
+          fontFamily={labelTextStyle.fontFamily}
+          style={{ userSelect: 'none' }}
+          data-testid="pin-label"
+        >
+          {label}
+        </text>
       </g>
     )
   }
